@@ -16,6 +16,7 @@ from PIL import Image, ImageDraw
 import os
 import requests
 import time
+import qimage2ndarray
 
 
 class MainPage(QMainWindow):
@@ -202,16 +203,17 @@ class MainPage(QMainWindow):
     def imageSelectedEvent(self, chosen_image_path):
         if chosen_image_path != "":
             self.openImageDisplay(chosen_image_path)
+            self.image_canvas.loadImage()
 
-    def openImageDisplay(self, image_path: str):
+    def openImageDisplay(self, image_source):
         if self.image_canvas != None:
             self.image_canvas.close()
         self.choose_image_dialog.hide()
         self.image_loading_bar.start()
-        self.image_canvas = ImageCanvas(image_path, self)
+        self.image_canvas = ImageCanvas(image_source)
         self.image_canvas.setSegmentAgent(self.segment_agent)
         self.image_canvas.image_loaded.connect(self.imageDisplayLoadedEvent)
-        self.image_canvas.loadImage()
+        
 
     def closeImageDisplay(self):
         if self.image_canvas == None:
@@ -313,8 +315,6 @@ class MainPage(QMainWindow):
         if path == "":
             return
 
-        project_image_path = self.image_canvas.image_path
-
         mask_managers = self.image_canvas.getAllMaskManagers()
 
         polygons = []
@@ -324,10 +324,11 @@ class MainPage(QMainWindow):
             if not manager.hasNothingDisplayed():
                 polygons.append(manager.displayed_mask.toDictionary())
 
-            #for polygon in manager.masks:
-            #    polygons.append(polygon.toDictionary())
 
-        project = [project_image_path, polygons]
+
+        arr = qimage2ndarray.rgb_view(self.image_canvas.image)
+
+        project = [arr, polygons]
 
 
         with open(path, 'wb') as outp:
@@ -337,20 +338,27 @@ class MainPage(QMainWindow):
         with open(path, 'rb') as inp:
             project = dill.load(inp)
 
-        self.imageSelectedEvent(project[0])
-        self.temporary = project[1]
         self.is_loading = True
+        self.temporary = project[1]
+
+        qimage = qimage2ndarray.array2qimage(project[0])
+        self.openImageDisplay(qimage)
+        print(qimage)
+        self.image_canvas.asyncWorkerDone(qimage)
 
     def loadProject(self):
         project_path = utils.chooseProject()
         if project_path == "":
             return
+        
         with open(project_path, 'rb') as inp:
             project = dill.load(inp)
 
-        self.imageSelectedEvent(project[0])
-        self.temporary = project[1]
         self.is_loading = True
+        self.temporary = project[1]
+        qimage = qimage2ndarray.array2qimage(project[0])
+        self.openImageDisplay(qimage)
+        self.image_canvas.asyncWorkerDone(qimage)
         
 
     def exportImage(self):
