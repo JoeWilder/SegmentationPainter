@@ -15,6 +15,7 @@ from components.display_bar import DisplayBar
 from utils.mask_manager import MaskManager
 import qimage2ndarray
 import time
+import pickle
 
 
 class ImageCanvas(QGraphicsView):
@@ -22,7 +23,7 @@ class ImageCanvas(QGraphicsView):
     image_loaded = pyqtSignal()
     tab_key_pressed = pyqtSignal()
 
-    def __init__(self, image_source):
+    def __init__(self, image_source=None):
         super().__init__()
         
 
@@ -76,6 +77,22 @@ class ImageCanvas(QGraphicsView):
         self.image_loader_worker.setCallbackFunction(self.asyncWorkerDone)
         self.image_loader_worker.start()
 
+    def loadProject(self, project_path, main_window):
+        def runnable():
+            with open(project_path, 'rb') as inp:
+                project = pickle.load(inp)
+            main_window.temporary = project[1]
+            qimage = qimage2ndarray.array2qimage(project[0])
+            loadedStuff = qimage, project[1], main_window
+            return qimage
+        
+        self.project_loader_worker = AsyncWorker(runnable)
+        self.project_loader_worker.setCallbackFunction(self.asyncWorkerDone)
+        self.project_loader_worker.start()
+
+
+
+
     def asyncWorkerDone(self, image):
         self.image: QImage = image
         self.pixmap = QPixmap.fromImage(image)
@@ -124,7 +141,8 @@ class ImageCanvas(QGraphicsView):
 
         if event.button() == Qt.MouseButton.MiddleButton:
             self.middle_mouse_button_pressed = True
-            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+            #self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+            #QApplication.setOverrideCursor(Qt.CursorShape.DragMoveCursor)
             self.last_scroll_position = event.pos()
             super().mousePressEvent(event)
             return
@@ -244,14 +262,17 @@ class ImageCanvas(QGraphicsView):
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.MiddleButton:
             self.middle_mouse_button_pressed = False
-            self.setDragMode(QGraphicsView.DragMode.NoDrag)
+            #self.setDragMode(QGraphicsView.DragMode.NoDrag)
         super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
 
 
         if self.isPointInEditableArea(event.pos()):
-            if self.tool_mode == ToolMode.CREATE_MASK:
+
+            if self.middle_mouse_button_pressed:
+                QApplication.setOverrideCursor(Qt.CursorShape.SizeAllCursor)
+            elif self.tool_mode == ToolMode.CREATE_MASK:
                 QApplication.setOverrideCursor(Qt.CursorShape.CrossCursor)
             else:
                 QApplication.setOverrideCursor(QCursor(QPixmap('assets/icons/circle.png')))
@@ -359,3 +380,40 @@ class ImageCanvas(QGraphicsView):
 
             # Update mask menu
             self.display_bar.getRightDrawer().addMask(mask_polygon)
+
+    def saveProject(self, path, main_window):
+        mask_managers = self.getAllMaskManagers()
+
+        polygons = []
+
+
+        def runnable():
+            time.sleep(.1)
+            for manager in mask_managers:
+                if not manager.hasNothingDisplayed():
+                    polygons.append(manager.displayed_mask.toDictionary())
+            
+            arr = qimage2ndarray.rgb_view(self.image)
+            
+            project = [arr, polygons]
+            filehandler = open(path, 'wb')
+            pickle.dump(project, filehandler, pickle.HIGHEST_PROTOCOL)
+            return main_window
+        
+        
+        self.project_saver_worker = AsyncWorker(runnable)
+        self.project_saver_worker.setCallbackFunction(self.projectSaved)
+        self.project_saver_worker.start()
+
+    def projectSaved(self, main_window):
+        main_window.margin_height = 50
+        main_window.margin_width = 50
+        main_window.container_layout.setContentsMargins(main_window.margin_width, main_window.margin_height, main_window.margin_width, main_window.margin_height)
+        main_window.menu_bar.setEnabled(True)
+        main_window.toolbar.setEnabled(True)
+        main_window.image_saving_bar.stop()
+        main_window.image_canvas.show()
+        main_window.display_bar.show()
+
+
+        

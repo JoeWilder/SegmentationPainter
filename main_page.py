@@ -11,7 +11,7 @@ from utils.async_worker import AsyncWorker
 from utils.tool_mode import ToolMode
 from utils.mask import MaskItem
 import utils.gui_utils as utils
-import dill
+import pickle
 from PIL import Image, ImageDraw
 import os
 import requests
@@ -209,6 +209,9 @@ class MainPage(QMainWindow):
         if self.image_canvas != None:
             self.image_canvas.close()
         self.choose_image_dialog.hide()
+        self.margin_height = 200
+        self.margin_width = 400
+        self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
         self.image_loading_bar.start()
         self.image_canvas = ImageCanvas(image_source)
         self.image_canvas.setSegmentAgent(self.segment_agent)
@@ -315,35 +318,24 @@ class MainPage(QMainWindow):
         if path == "":
             return
 
-        mask_managers = self.image_canvas.getAllMaskManagers()
+        self.image_canvas.hide()
+        self.display_bar.hide()
+        self.image_saving_bar.start()
+        self.margin_height = 200
+        self.margin_width = 400
+        self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
 
-        polygons = []
-
-        for manager in mask_managers:
-            
-            if not manager.hasNothingDisplayed():
-                polygons.append(manager.displayed_mask.toDictionary())
-
-
-
-        arr = qimage2ndarray.rgb_view(self.image_canvas.image)
-
-        project = [arr, polygons]
-
-
-        with open(path, 'wb') as outp:
-            dill.dump(project, outp, dill.HIGHEST_PROTOCOL)
+        self.image_canvas.saveProject(path, self)
 
     def projectSelected(self, path):
         with open(path, 'rb') as inp:
-            project = dill.load(inp)
+            project = pickle.load(inp)
 
         self.is_loading = True
         self.temporary = project[1]
-
         qimage = qimage2ndarray.array2qimage(project[0])
+        print("stop")
         self.openImageDisplay(qimage)
-        print(qimage)
         self.image_canvas.asyncWorkerDone(qimage)
 
     def loadProject(self):
@@ -351,14 +343,19 @@ class MainPage(QMainWindow):
         if project_path == "":
             return
         
-        with open(project_path, 'rb') as inp:
-            project = dill.load(inp)
-
         self.is_loading = True
-        self.temporary = project[1]
-        qimage = qimage2ndarray.array2qimage(project[0])
-        self.openImageDisplay(qimage)
-        self.image_canvas.asyncWorkerDone(qimage)
+
+        self.openImageDisplay(None)
+        self.image_canvas.loadProject(project_path, self)
+
+
+
+        #self.openImageDisplay(qimage)
+        #self.image_canvas.loadImage()
+        #self.image_canvas.asyncWorkerDone(qimage)
+
+    def projectIsLoaded(self):
+        pass
         
 
     def exportImage(self):
