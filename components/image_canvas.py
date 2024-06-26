@@ -22,10 +22,18 @@ class ImageCanvas(QGraphicsView):
     image_loaded = pyqtSignal()
     tab_key_pressed = pyqtSignal()
 
-    def __init__(self, image_path, main_window):
+    def __init__(self, image_source):
         super().__init__()
-        self.main_window = main_window
-        self.image_path = image_path
+        
+
+        self.image_path = None
+        if isinstance(image_source, str):  # If image_source is a path
+            self.image_path = image_source
+            #self.image_data = QImage(image_source)
+        elif isinstance(image_source, QImage):  # If image_source is already a QImage
+            self.image = image_source
+
+
         self.tool_mode = ToolMode.CREATE_MASK
         self.mask_color = QColor(30, 144, 255, 75)
         self.mouse_position_x = "-"
