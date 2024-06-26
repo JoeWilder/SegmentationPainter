@@ -1,1 +1,1 @@
-# ImageSegmenter
+# SegmentationPainter
