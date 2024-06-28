@@ -3,6 +3,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 class AsyncWorker(QThread):
     """A class for running a function on a separate thread"""
+
     job_done = pyqtSignal(object)
 
     def __init__(self, async_function):
@@ -16,6 +17,5 @@ class AsyncWorker(QThread):
         try:
             result = self.async_function()
             self.job_done.emit(result)
-        except: Exception
-
-        
+        except:
+            Exception

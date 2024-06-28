@@ -1,9 +1,7 @@
-import math
-
 from PyQt6.QtCore import QRect, Qt, QTimer
 from PyQt6.QtGui import QColor, QPainter, QPaintEvent
 from PyQt6.QtWidgets import QWidget
-
+import math
 
 
 class WaitingSpinner(QWidget):

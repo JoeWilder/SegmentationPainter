@@ -1,13 +1,16 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QProgressBar, QLabel, QGraphicsOpacityEffect
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QProgressBar, QLabel, QGraphicsOpacityEffect  # fmt: skip
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve
 
 
 class LoadingBar(QWidget):
     """A window with a loading bar"""
+
     def __init__(self, text=None):
         super().__init__()
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
+        )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setStyleSheet(
             """LoadingBar{background-color: rgba(235, 235, 235, 150); border-radius: 15px; padding: 100px;}"""
@@ -24,7 +27,8 @@ class LoadingBar(QWidget):
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 0)
         self.progress_bar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.progress_bar.setStyleSheet("""
+        self.progress_bar.setStyleSheet(
+            """
             QProgressBar {
                 border: 2px solid #8f8f91;
                 border-radius: 5px;
@@ -35,7 +39,8 @@ class LoadingBar(QWidget):
                 background-color: #05B8CC;
                 width: 20px;
             }
-        """)
+        """
+        )
 
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)

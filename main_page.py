@@ -1,30 +1,32 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QColorDialog, QLayout, QToolBar, QGraphicsPolygonItem, QApplication
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QColorDialog, QLayout, QToolBar  # fmt: skip
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtCore import Qt
 
-from components.image_dialog import ChooseImageDialog
 from components.display_bar import DisplayBar
 from components.image_canvas import ImageCanvas
+from components.image_dialog import ChooseImageDialog
+from components.loading_modal import LoginPopup
+
 from segment_agent import SegmentAgent
 from utils.async_worker import AsyncWorker
-from utils.tool_mode import ToolMode
-from utils.mask import MaskItem
-import utils.gui_utils as utils
-from components.loading_modal import LoginPopup
 from utils.checkpoint_downloader import CheckpointDownloader
+from utils.mask import MaskItem
+from utils.tool_mode import ToolMode
+import utils.gui_utils as utils
 
 
 class MainPage(QMainWindow):
     """The main page of the application. This page handles creation of the top menu bar, the left tool bar.
     \nIt also creates a dialog for choosing images, loading screens, and the image canvas responsible for displaying and editing images.
     \nWindow visibility and segment agent creation is also handled here."""
+
     def __init__(self):
         super().__init__()
         self.margin_height: int = 200
         self.margin_width: int = 400
         self.image_canvas: ImageCanvas = None
         self.dialog = None
-        
+
         self.tool_mode = ToolMode.CREATE_MASK
 
         self.image_canvas = ImageCanvas()
@@ -32,23 +34,24 @@ class MainPage(QMainWindow):
 
         self.display_bar = DisplayBar(self.image_canvas)
         self.image_canvas.setCoordinateDisplay(self.display_bar)
-        
-        self.initializeWindow()
 
+        self.initializeWindow()
 
     def initializeWindow(self):
         self.setMinimumSize(550, 350)
         self.setWindowTitle("Image Segmenter")
         self.setWindowIcon(utils.createIcon("app_logo.svg"))
         self.showMaximized()
-        
+
         central_widget = QWidget()
         self.central_layout = QHBoxLayout(central_widget)
         self.setCentralWidget(central_widget)
 
         container_widget = QWidget(central_widget)
         self.container_layout = QVBoxLayout(container_widget)
-        self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
+        self.container_layout.setContentsMargins(
+            self.margin_width, self.margin_height, self.margin_width, self.margin_height
+        )
         self.central_layout.addWidget(container_widget)
 
         self.createMainMenuBar()
@@ -95,7 +98,9 @@ class MainPage(QMainWindow):
         self.redo_act.setShortcut("Ctrl+Y")
         self.redo_act.triggered.connect(self.redoButtonClicked)
 
-        self.toggle_view_act = QAction(utils.createIcon("right_menu_open.png"), "Toggle Mask Menu", self)
+        self.toggle_view_act = QAction(
+            utils.createIcon("right_menu_open.png"), "Toggle Mask Menu", self
+        )
         self.toggle_view_act.triggered.connect(self.toggleMaskMenu)
 
         file_menu = self.menu_bar.addMenu("File")
@@ -123,13 +128,15 @@ class MainPage(QMainWindow):
         self.brush_action.setCheckable(True)
         self.brush_action.setChecked(True)
         self.brush_action.triggered.connect(self.updateToolMode)
-        
+
         self.toolbar.addAction(self.brush_action)
         tool_group.addAction(self.brush_action)
 
         self.toolbar.addSeparator()
 
-        self.eraser_action = QAction(utils.createIcon("eraser.png"), "Erase masks", self)
+        self.eraser_action = QAction(
+            utils.createIcon("eraser.png"), "Erase masks", self
+        )
         self.eraser_action.setCheckable(True)
         self.eraser_action.triggered.connect(self.updateToolMode)
         self.toolbar.addAction(self.eraser_action)
@@ -151,8 +158,10 @@ class MainPage(QMainWindow):
     def loadSegmentAgent(self):
         if self.dialog != None:
             self.dialog.stop()
+
         def runnable():
             return SegmentAgent()
+
         self.agent_loader_worker = AsyncWorker(runnable)
         self.agent_loader_worker.job_done.connect(self.segmentAgentLoaded)
         self.agent_loader_worker.start()
@@ -166,8 +175,6 @@ class MainPage(QMainWindow):
 
     def imageFileChosen(self, file_path: str):
 
-        print(file_path)
-        
         self.display_bar.close()
         self.image_canvas.close()
         self.choose_image_dialog.hide()
@@ -176,10 +183,12 @@ class MainPage(QMainWindow):
         self.image_canvas.show()
         self.display_bar.show()
         self.showDialog("Loading image")
-        
+
         self.margin_height = 50
         self.margin_width = 50
-        self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
+        self.container_layout.setContentsMargins(
+            self.margin_width, self.margin_height, self.margin_width, self.margin_height
+        )
 
         if file_path.lower().endswith(".sgmt"):
             self.image_canvas.loadProject(file_path)
@@ -189,18 +198,21 @@ class MainPage(QMainWindow):
 
     def imageCanvasLoaded(self):
         self.dialog.stop()
-        
+
         self.actions[0].setChecked(True)
         self.display_bar.right_drawer.save_signal.connect(self.exportImage)
-        self.display_bar.right_drawer.mask_level_change_signal.connect(self.changeMaskLevel)
-        
+        self.display_bar.right_drawer.mask_level_change_signal.connect(
+            self.changeMaskLevel
+        )
+
         self.margin_height = 50
         self.margin_width = 50
-        self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
+        self.container_layout.setContentsMargins(
+            self.margin_width, self.margin_height, self.margin_width, self.margin_height
+        )
         self.menu_bar.setEnabled(True)
         self.toolbar.setEnabled(True)
         self.image_canvas.tab_key_pressed.connect(self.cycleToNextTool)
-        
 
     def selectImageFromFileManager(self):
         file_path = utils.getFilePath()
@@ -216,7 +228,9 @@ class MainPage(QMainWindow):
         self.display_bar.close()
         self.margin_height = 200
         self.margin_width = 400
-        self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
+        self.container_layout.setContentsMargins(
+            self.margin_width, self.margin_height, self.margin_width, self.margin_height
+        )
         self.container_layout.addWidget(self.choose_image_dialog)
         self.menu_bar.setEnabled(False)
         self.toolbar.setEnabled(False)
@@ -249,7 +263,7 @@ class MainPage(QMainWindow):
         self.toolbar.setEnabled(False)
         self.image_canvas.setEnabled(False)
         self.display_bar.setEnabled(False)
-        
+
         self.image_canvas.export_done.connect(self.exportFinished)
         self.image_canvas.export_as_image(path)
 
@@ -288,7 +302,10 @@ class MainPage(QMainWindow):
     def showColorDialog(self):
         dialog = QColorDialog(self)
         dialog.setWindowTitle("Select Mask Color")
-        dialog.setOptions(QColorDialog.ColorDialogOption.ShowAlphaChannel | QColorDialog.ColorDialogOption.DontUseNativeDialog)
+        dialog.setOptions(
+            QColorDialog.ColorDialogOption.ShowAlphaChannel
+            | QColorDialog.ColorDialogOption.DontUseNativeDialog
+        )
         dialog.setModal(True)
         dialog.layout().setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
         dialog.setMinimumSize(700, 450)
@@ -309,7 +326,9 @@ class MainPage(QMainWindow):
         available_height = self.centralWidget().height()
         margin_width = min(available_width // 4, self.margin_width)
         margin_height = min(available_height // 4, self.margin_height)
-        self.container_layout.setContentsMargins(margin_width, margin_height, margin_width, margin_height)    
+        self.container_layout.setContentsMargins(
+            margin_width, margin_height, margin_width, margin_height
+        )
 
     def cycleToNextTool(self):
         action: QAction
@@ -317,7 +336,7 @@ class MainPage(QMainWindow):
             if action.isChecked():
                 current_index = self.actions.index(action)
                 next_index = current_index + 1
-                if (next_index >= len(self.actions)):
+                if next_index >= len(self.actions):
                     next_index = 0
                 self.actions[next_index].setChecked(True)
                 self.updateToolMode()
