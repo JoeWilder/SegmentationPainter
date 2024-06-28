@@ -165,6 +165,8 @@ class MainPage(QMainWindow):
         self.container_layout.addWidget(self.choose_image_dialog)
 
     def imageFileChosen(self, file_path: str):
+
+        print(file_path)
         
         self.display_bar.close()
         self.image_canvas.close()
@@ -180,9 +182,9 @@ class MainPage(QMainWindow):
         self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
 
         if file_path.lower().endswith(".sgmt"):
-            self.image_canvas.load_project(file_path)
+            self.image_canvas.loadProject(file_path)
         else:
-            self.image_canvas.load_image(file_path)
+            self.image_canvas.loadImage(file_path)
         self.image_canvas.image_loaded.connect(self.imageCanvasLoaded)
 
     def imageCanvasLoaded(self):

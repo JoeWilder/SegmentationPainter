@@ -1,9 +1,6 @@
-import os
 from PyQt6.QtWidgets import QWidget, QGraphicsView, QGraphicsScene, QVBoxLayout, QGraphicsPolygonItem, QApplication
 from PyQt6.QtGui import QPixmap, QImage, QColor, QPainter, QColor, QImageReader, QKeyEvent, QCursor
 from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QEvent, QObject, QBuffer, pyqtBoundSignal
-from PIL import Image
-Image.MAX_IMAGE_PIXELS = None
 
 from utils.async_worker import AsyncWorker
 from utils.tool_mode import ToolMode
@@ -15,6 +12,7 @@ import qimage2ndarray
 import time
 import pickle
 from PIL import Image, ImageDraw
+Image.MAX_IMAGE_PIXELS = None
 import io
 
 
@@ -67,7 +65,7 @@ class ImageCanvas(QGraphicsView):
 
 
 
-    def load_image(self, file_path):
+    def loadImage(self, file_path):
         def runnable():
             image = QImage(file_path)
             return image
@@ -75,7 +73,7 @@ class ImageCanvas(QGraphicsView):
         self.image_loader_worker.setCallbackFunction(self.asyncWorkerDone)
         self.image_loader_worker.start()
 
-    def load_project(self, project_path):
+    def loadProject(self, project_path):
         def runnable():
             with open(project_path, 'rb') as inp:
                 project = pickle.load(inp)
