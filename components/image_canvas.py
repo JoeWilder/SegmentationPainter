@@ -1,39 +1,38 @@
 import os
-from PyQt6.QtWidgets import QWidget, QGraphicsView, QGraphicsScene, QVBoxLayout, QGraphicsPolygonItem, QApplication, QMainWindow
+from PyQt6.QtWidgets import QWidget, QGraphicsView, QGraphicsScene, QVBoxLayout, QGraphicsPolygonItem, QApplication
 from PyQt6.QtGui import QPixmap, QImage, QColor, QPainter, QColor, QImageReader, QKeyEvent, QCursor
-from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QEvent, QObject, QPointF
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QEvent, QObject, QBuffer, pyqtBoundSignal
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
 from utils.async_worker import AsyncWorker
 from utils.tool_mode import ToolMode
 from utils.mask import MaskItem
-import utils.gui_utils as utils
-from components.loading_bar import LoadingBar
 from segment_agent import SegmentAgent
 from components.display_bar import DisplayBar
 from utils.mask_manager import MaskManager
 import qimage2ndarray
 import time
 import pickle
+from PIL import Image, ImageDraw
+import io
 
 
 class ImageCanvas(QGraphicsView):
     """Used to display and edit an image"""
-    image_loaded = pyqtSignal()
+
+    image_loaded: pyqtBoundSignal = pyqtSignal()
     tab_key_pressed = pyqtSignal()
-
-    def __init__(self, image_source=None):
+    project_saved = pyqtSignal()
+    export_done = pyqtSignal()
+    mask_change = pyqtSignal(MaskItem)
+    
+    def __init__(self):
         super().__init__()
+
         
-
-        self.image_path = None
-        if isinstance(image_source, str):  # If image_source is a path
-            self.image_path = image_source
-            #self.image_data = QImage(image_source)
-        elif isinstance(image_source, QImage):  # If image_source is already a QImage
-            self.image = image_source
-
+        
+        self.display_bar = None
 
         self.tool_mode = ToolMode.CREATE_MASK
         self.mask_color = QColor(30, 144, 255, 75)
@@ -46,7 +45,6 @@ class ImageCanvas(QGraphicsView):
         self.setStyleSheet("""ImageCanvas { 
                            border: 3px solid rgb(230, 230, 230);
                            }""")
-        self.factor = None
         self.middle_mouse_button_pressed = False
         self.zoom_factor_base = 1.1
         self.zoom_level = 1.0
@@ -69,28 +67,29 @@ class ImageCanvas(QGraphicsView):
 
 
 
-    def loadImage(self):
+    def load_image(self, file_path):
         def runnable():
-            image = QImage(self.image_path)
+            image = QImage(file_path)
             return image
         self.image_loader_worker = AsyncWorker(runnable)
         self.image_loader_worker.setCallbackFunction(self.asyncWorkerDone)
         self.image_loader_worker.start()
 
-    def loadProject(self, project_path, main_window):
+    def load_project(self, project_path):
         def runnable():
             with open(project_path, 'rb') as inp:
                 project = pickle.load(inp)
-            main_window.temporary = project[1]
             qimage = qimage2ndarray.array2qimage(project[0])
-            loadedStuff = qimage, project[1], main_window
-            return qimage
+            polygons : list[dict] = project[1]
+            return qimage, polygons
         
         self.project_loader_worker = AsyncWorker(runnable)
-        self.project_loader_worker.setCallbackFunction(self.asyncWorkerDone)
+        self.project_loader_worker.setCallbackFunction(self.project_loaded)
         self.project_loader_worker.start()
 
-
+    def project_loaded(self, project_properties):
+        self.loadExistingPolygons(project_properties[1])
+        self.asyncWorkerDone(project_properties[0])
 
 
     def asyncWorkerDone(self, image):
@@ -98,22 +97,8 @@ class ImageCanvas(QGraphicsView):
         self.pixmap = QPixmap.fromImage(image)
         self.image_item = self.scene.addPixmap(self.pixmap)
         self.scene.setSceneRect(self.image_item.boundingRect())
-        self.centerImageInView()
+        self.fitInView(self.image_item.boundingRect(), Qt.AspectRatioMode.KeepAspectRatio)
         self.image_loaded.emit()
-
-    def centerImageInView(self):
-        view_rect = self.viewport().rect()
-        scene_rect = self.scene.sceneRect()
-        if not scene_rect.isEmpty():
-            view_aspect_ratio = view_rect.width() / view_rect.height()
-            scene_aspect_ratio = scene_rect.width() / scene_rect.height()
-            
-            if view_aspect_ratio >= scene_aspect_ratio:
-                scale_factor = view_rect.width() / scene_rect.width()
-            else:
-                scale_factor = view_rect.height() / scene_rect.height()
-            
-            self.scale(scale_factor, scale_factor)
 
     def captureScreenshot(self):
         area = self.viewport().rect()
@@ -126,13 +111,15 @@ class ImageCanvas(QGraphicsView):
         return array
     
 
-    def undoMask(self):
-        if self.current_mask_manager != None:
-            self.current_mask_manager.displayPreviousMaskItem(self.display_bar)
+    def undo_mask(self):
+        if self.current_mask_manager == None:
+            return
+        self.current_mask_manager.displayPreviousMaskItem(self.display_bar)
 
-    def redoMask(self):
-        if self.current_mask_manager != None:
-            self.current_mask_manager.displayNextMaskItem(self.display_bar)
+    def redo_mask(self):
+        if self.current_mask_manager == None:
+            return
+        self.current_mask_manager.displayNextMaskItem(self.display_bar)
 
     def mousePressEvent(self, event):
 
@@ -141,8 +128,6 @@ class ImageCanvas(QGraphicsView):
 
         if event.button() == Qt.MouseButton.MiddleButton:
             self.middle_mouse_button_pressed = True
-            #self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
-            #QApplication.setOverrideCursor(Qt.CursorShape.DragMoveCursor)
             self.last_scroll_position = event.pos()
             super().mousePressEvent(event)
             return
@@ -255,14 +240,12 @@ class ImageCanvas(QGraphicsView):
             factor = self.zoom_factor_base
         else:
             factor = 1 / self.zoom_factor_base
-        self.factor = factor
         self.zoom_level *= factor
         self.scale(factor, factor)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.MiddleButton:
             self.middle_mouse_button_pressed = False
-            #self.setDragMode(QGraphicsView.DragMode.NoDrag)
         super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -330,9 +313,14 @@ class ImageCanvas(QGraphicsView):
         return super().eventFilter(object, event)
 
     def close(self):
+        self.masks.clear()
+        self.loaded_mask_ids.clear()
+        self.mask_id = 1
+        self.mask_managers.clear()
         self.scene.clear()
+        self.current_mask_manager = None
+        self.viewport_moved = True
         self.hide()
-        self.display_bar.hide()
 
     def setToolMode(self, tool_mode):
         self.tool_mode = tool_mode
@@ -369,19 +357,11 @@ class ImageCanvas(QGraphicsView):
             manager.displayNextMaskItem()
 
             mask_polygon.drawFixed(mask["points"])
-
-
-            #self.scene.addItem(mask_polygon)
             mask_polygon.setZValue(10)
-
-
             self.mask_managers.append(manager)
-
-
-            # Update mask menu
             self.display_bar.getRightDrawer().addMask(mask_polygon)
 
-    def saveProject(self, path, main_window):
+    def save_project(self, path, main_window):
         mask_managers = self.getAllMaskManagers()
 
         polygons = []
@@ -389,6 +369,7 @@ class ImageCanvas(QGraphicsView):
 
         def runnable():
             time.sleep(.1)
+            manager: MaskManager
             for manager in mask_managers:
                 if not manager.hasNothingDisplayed():
                     polygons.append(manager.displayed_mask.toDictionary())
@@ -402,18 +383,42 @@ class ImageCanvas(QGraphicsView):
         
         
         self.project_saver_worker = AsyncWorker(runnable)
-        self.project_saver_worker.setCallbackFunction(self.projectSaved)
+        self.project_saver_worker.setCallbackFunction(self.project_saved.emit)
         self.project_saver_worker.start()
 
-    def projectSaved(self, main_window):
-        main_window.margin_height = 50
-        main_window.margin_width = 50
-        main_window.container_layout.setContentsMargins(main_window.margin_width, main_window.margin_height, main_window.margin_width, main_window.margin_height)
-        main_window.menu_bar.setEnabled(True)
-        main_window.toolbar.setEnabled(True)
-        main_window.image_saving_bar.stop()
-        main_window.image_canvas.show()
-        main_window.display_bar.show()
+    def export_as_image(self, file_path):
+        def runnable():
 
+            buffer = QBuffer()
+            buffer.open(QBuffer.OpenModeFlag.ReadWrite)
+            self.image.save(buffer, "PNG")
+            original_image = Image.open(io.BytesIO(buffer.data()))
+            size = self.image.size()
+            mask_image = Image.new("RGBA", (size.width(), size.height()), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(mask_image)
 
+            polygons = []
+            for item in self.scene.items():
+                if isinstance(item, QGraphicsPolygonItem):
+                    polygons.append(item)
+
+            mask: MaskItem
+            for mask in polygons:
+                polygon = mask.polygon()
+                points = [(point.x(), point.y()) for point in polygon]
+                r, g, b, a = mask.mask_color.getRgb()
+
+                draw.polygon(points, fill=(r, g, b, a))
+
+            if original_image.mode != 'RGBA':
+                original_image = original_image.convert('RGBA')
+
+            output_image = Image.alpha_composite(original_image, mask_image)
+            output_image.save(file_path)
+            return output_image
         
+        self.image_saver_worker = AsyncWorker(runnable)
+        self.image_saver_worker.setCallbackFunction(self.export_done.emit)
+        self.image_saver_worker.start()
+
+    

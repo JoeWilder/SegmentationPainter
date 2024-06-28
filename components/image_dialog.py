@@ -5,8 +5,7 @@ import utils.gui_utils
 
 class ChooseImageDialog(QWidget):
     """A window that prompts the user to select an image"""
-    imageChosen = pyqtSignal(str)
-    projectChosen = pyqtSignal(str)
+    image_chosen = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -82,21 +81,19 @@ class ChooseImageDialog(QWidget):
         chosenFiles = event.mimeData().urls()
         if len(chosenFiles) > 1:
             self.setStyleSheet(self.common_style)
-            error_dialog = QErrorMessage()
-            error_dialog.showMessage('Oh no!')
             return
         path = chosenFiles[0].toLocalFile()
+        if path == "":
+            event.ignore()
         self.setStyleSheet(self.common_style)
-        if path.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".tif", ".tiff")):
-            self.imageChosen.emit(path)
-            event.accept()
-        elif path.lower().endswith(".sgmt"):
-            self.projectChosen.emit(path)
+        if path.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".tif", ".tiff", ".sgmt")):
+            self.image_chosen.emit(path)
             event.accept()
         else:
             event.ignore()
         
-
     def selectImage(self):
-        path = utils.gui_utils.chooseFile()
-        self.imageChosen.emit(path)
+        path = utils.gui_utils.getFilePath()
+        if path == "":
+            return
+        self.image_chosen.emit(path)

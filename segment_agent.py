@@ -72,5 +72,5 @@ class SegmentAgent:
         masks = mask_generator.generate(self.image)
         return masks
     
-    def setMaskLevel(self, mask_level: SliderAction):
+    def set_mask_level(self, mask_level: SliderAction):
         self.mask_level = mask_level
