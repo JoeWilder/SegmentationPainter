@@ -58,6 +58,9 @@ class MaskManager:
             else:
                 display_bar.getRightDrawer().updateMask(self.displayed_mask)
 
+    def isRootMask(self, mask_item: MaskItem) -> bool:
+        return mask_item == self.root_mask
+
     def unselectCurrentMask(self):
         self.displayed_mask.setSelected(False)
 

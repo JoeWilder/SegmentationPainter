@@ -30,6 +30,11 @@ class DisplayBar(QWidget):
     
     def getCoordinateDisplayWindow(self):
         return self.windowtest
+    
+    def close(self):
+        self.hide()
+        self.right_drawer.mask_list.clear()
+        self.right_drawer.image_label.clear()
 
 
 
