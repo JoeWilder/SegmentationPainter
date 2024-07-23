@@ -25,6 +25,7 @@ class DisplayBar(QWidget):
 
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
     def getRightDrawer(self):
         return self.right_drawer
@@ -53,6 +54,7 @@ class MaskItemWidget(QWidget):
         self.label = QLabel(self.mask_item.getDisplayName())
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.label)
+        self.label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         self.line_edit = QLineEdit(self)
         self.line_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -96,6 +98,7 @@ class RightDrawer(QWidget):
         self.image_label = QLabel()
         self.image_label.setMinimumHeight(100)
         layout.addWidget(self.image_label)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         self.label1 = QLabel("Current Mask")
         self.label1.setObjectName("myLabel1")
@@ -143,6 +146,7 @@ class RightDrawer(QWidget):
         self.text_box.setPlaceholderText("Enter label here...")
         self.text_box.setMaximumWidth(300)
         self.text_box.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.text_box.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         text_layout.addWidget(self.text_box)
 
         # Add the text layout to the main layout
@@ -172,6 +176,8 @@ class RightDrawer(QWidget):
 
         self.slider.setMinimumWidth(150)
 
+        self.slider.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
         layout.addWidget(self.slider, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.label3 = QLabel("Best Mask")
@@ -189,6 +195,7 @@ class RightDrawer(QWidget):
         button = QPushButton("Export Image")
         button.setMinimumSize(75, 35)
         button.clicked.connect(self.saveFile)
+        button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         layout.addWidget(button)
 
         layout.setContentsMargins(10, 10, 10, 10)
