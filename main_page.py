@@ -49,9 +49,7 @@ class MainPage(QMainWindow):
 
         container_widget = QWidget(central_widget)
         self.container_layout = QVBoxLayout(container_widget)
-        self.container_layout.setContentsMargins(
-            self.margin_width, self.margin_height, self.margin_width, self.margin_height
-        )
+        self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
         self.central_layout.addWidget(container_widget)
 
         self.createMainMenuBar()
@@ -90,6 +88,9 @@ class MainPage(QMainWindow):
         self.export_act = QAction(utils.createIcon("export.png"), "Export", self)
         self.export_act.triggered.connect(self.exportImage)
 
+        self.export_json_act = QAction(utils.createIcon("export.png"), "Export Json data", self)
+        self.export_json_act.triggered.connect(self.exportJson)
+
         self.undo_act = QAction(utils.createIcon("undo.png"), "Undo", self)
         self.undo_act.setShortcut("Ctrl+Z")
         self.undo_act.triggered.connect(self.undoButtonClicked)
@@ -98,9 +99,7 @@ class MainPage(QMainWindow):
         self.redo_act.setShortcut("Ctrl+Y")
         self.redo_act.triggered.connect(self.redoButtonClicked)
 
-        self.toggle_view_act = QAction(
-            utils.createIcon("right_menu_open.png"), "Toggle Mask Menu", self
-        )
+        self.toggle_view_act = QAction(utils.createIcon("right_menu_open.png"), "Toggle Mask Menu", self)
         self.toggle_view_act.triggered.connect(self.toggleMaskMenu)
 
         file_menu = self.menu_bar.addMenu("File")
@@ -109,6 +108,7 @@ class MainPage(QMainWindow):
         file_menu.addAction(self.save_act)
         file_menu.addAction(self.load_act)
         file_menu.addAction(self.export_act)
+        file_menu.addAction(self.export_json_act)
         file_menu.addSeparator()
         edit_menu = self.menu_bar.addMenu("Edit")
         edit_menu.addAction(self.undo_act)
@@ -134,9 +134,7 @@ class MainPage(QMainWindow):
 
         self.toolbar.addSeparator()
 
-        self.eraser_action = QAction(
-            utils.createIcon("eraser.png"), "Erase masks", self
-        )
+        self.eraser_action = QAction(utils.createIcon("eraser.png"), "Erase masks", self)
         self.eraser_action.setCheckable(True)
         self.eraser_action.triggered.connect(self.updateToolMode)
         self.toolbar.addAction(self.eraser_action)
@@ -186,9 +184,7 @@ class MainPage(QMainWindow):
 
         self.margin_height = 50
         self.margin_width = 50
-        self.container_layout.setContentsMargins(
-            self.margin_width, self.margin_height, self.margin_width, self.margin_height
-        )
+        self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
 
         if file_path.lower().endswith(".sgmt"):
             self.image_canvas.loadProject(file_path)
@@ -201,15 +197,11 @@ class MainPage(QMainWindow):
 
         self.actions[0].setChecked(True)
         self.display_bar.right_drawer.save_signal.connect(self.exportImage)
-        self.display_bar.right_drawer.mask_level_change_signal.connect(
-            self.changeMaskLevel
-        )
+        self.display_bar.right_drawer.mask_level_change_signal.connect(self.changeMaskLevel)
 
         self.margin_height = 50
         self.margin_width = 50
-        self.container_layout.setContentsMargins(
-            self.margin_width, self.margin_height, self.margin_width, self.margin_height
-        )
+        self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
         self.menu_bar.setEnabled(True)
         self.toolbar.setEnabled(True)
         self.image_canvas.tab_key_pressed.connect(self.cycleToNextTool)
@@ -228,9 +220,7 @@ class MainPage(QMainWindow):
         self.display_bar.close()
         self.margin_height = 200
         self.margin_width = 400
-        self.container_layout.setContentsMargins(
-            self.margin_width, self.margin_height, self.margin_width, self.margin_height
-        )
+        self.container_layout.setContentsMargins(self.margin_width, self.margin_height, self.margin_width, self.margin_height)
         self.container_layout.addWidget(self.choose_image_dialog)
         self.menu_bar.setEnabled(False)
         self.toolbar.setEnabled(False)
@@ -240,7 +230,7 @@ class MainPage(QMainWindow):
         if path == "":
             return
         self.showDialog("Saving Project")
-        self.image_canvas.save_project(path, self)
+        self.image_canvas.saveProject(path, self)
         self.image_canvas.project_saved.connect(self.projectFinishedSaving)
 
     def projectFinishedSaving(self):
@@ -265,7 +255,21 @@ class MainPage(QMainWindow):
         self.display_bar.setEnabled(False)
 
         self.image_canvas.export_done.connect(self.exportFinished)
-        self.image_canvas.export_as_image(path)
+        self.image_canvas.exportAsImage(path)
+
+    def exportJson(self):
+        path = utils.saveJsonPath(self.image_canvas.image_path)
+        if path == "":
+            return
+        # self.showDialog("Exporting json")
+        # self.menu_bar.setEnabled(False)
+        # self.toolbar.setEnabled(False)
+        # self.image_canvas.setEnabled(False)
+        # self.display_bar.setEnabled(False)
+
+        # self.image_canvas.export_done.connect(self.exportFinished)
+        self.image_canvas.exportJson(path)
+        # print(path)
 
     def exportFinished(self):
         self.menu_bar.setEnabled(True)
@@ -277,12 +281,12 @@ class MainPage(QMainWindow):
     def undoButtonClicked(self):
         if self.image_canvas == None:
             return
-        self.image_canvas.undo_mask()
+        self.image_canvas.undoMask()
 
     def redoButtonClicked(self):
         if self.image_canvas == None:
             return
-        self.image_canvas.redo_mask()
+        self.image_canvas.redoMask()
 
     def toggleMaskMenu(self):
         self.image_canvas.viewport_moved = True
@@ -302,10 +306,7 @@ class MainPage(QMainWindow):
     def showColorDialog(self):
         dialog = QColorDialog(self)
         dialog.setWindowTitle("Select Mask Color")
-        dialog.setOptions(
-            QColorDialog.ColorDialogOption.ShowAlphaChannel
-            | QColorDialog.ColorDialogOption.DontUseNativeDialog
-        )
+        dialog.setOptions(QColorDialog.ColorDialogOption.ShowAlphaChannel | QColorDialog.ColorDialogOption.DontUseNativeDialog)
         dialog.setModal(True)
         dialog.layout().setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
         dialog.setMinimumSize(700, 450)
@@ -326,9 +327,7 @@ class MainPage(QMainWindow):
         available_height = self.centralWidget().height()
         margin_width = min(available_width // 4, self.margin_width)
         margin_height = min(available_height // 4, self.margin_height)
-        self.container_layout.setContentsMargins(
-            margin_width, margin_height, margin_width, margin_height
-        )
+        self.container_layout.setContentsMargins(margin_width, margin_height, margin_width, margin_height)
 
     def cycleToNextTool(self):
         action: QAction

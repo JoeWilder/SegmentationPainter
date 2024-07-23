@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QScrollArea, QListWidget, QListWidgetItem, QSlider  # fmt: skip
+from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QScrollArea, QListWidget, QListWidgetItem, QSlider, QLineEdit, QSizePolicy , QHBoxLayout  # fmt: skip
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 from PyQt6.QtGui import QPixmap, QPainter, QBrush, QTransform
 from utils.mask import MaskItem
@@ -36,20 +36,46 @@ class DisplayBar(QWidget):
         self.hide()
         self.right_drawer.mask_list.clear()
         self.right_drawer.image_label.clear()
+        self.right_drawer.selected_widget = None
+
+    def getAnnotationLabel(self):
+        return self.right_drawer.text_box.text()
 
 
 class MaskItemWidget(QWidget):
     def __init__(self, mask_item: MaskItem, parent=None):
         super().__init__(parent)
         self.mask_item = mask_item
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
 
-        self.label = QLabel(self.mask_item.getName())
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
+        self.label = QLabel(self.mask_item.getDisplayName())
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.label)
+        self.layout.addWidget(self.label)
 
-        self.setLayout(layout)
+        self.line_edit = QLineEdit(self)
+        self.line_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.line_edit.setVisible(False)
+        self.layout.addWidget(self.line_edit)
+
+        self.setLayout(self.layout)
+
+        self.label.mouseDoubleClickEvent = self.startEditing
+        self.line_edit.editingFinished.connect(self.finishEditing)
+
+    def startEditing(self, event):
+        self.label.setVisible(False)
+        self.line_edit.setText(self.label.text())
+        self.line_edit.setVisible(True)
+        self.line_edit.setFocus()
+
+    def finishEditing(self):
+        new_name = self.line_edit.text()
+        self.mask_item.setDisplayName(new_name)
+        self.label.setText(new_name)
+        self.line_edit.setVisible(False)
+        self.label.setVisible(True)
 
 
 class RightDrawer(QWidget):
@@ -65,9 +91,7 @@ class RightDrawer(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.setStyleSheet(
-            "RightDrawer {border: 2px solid rgb(225, 225, 225); border-radius: 15px;}"
-        )
+        self.setStyleSheet("RightDrawer {border: 2px solid rgb(225, 225, 225); border-radius: 15px;}")
 
         self.image_label = QLabel()
         self.image_label.setMinimumHeight(100)
@@ -96,6 +120,33 @@ class RightDrawer(QWidget):
         self.mask_list.itemPressed.connect(self.itemClickedEvent)
 
         scroll_area.setWidget(self.mask_list)
+
+        text_layout = QVBoxLayout()
+        text_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.text_box_label = QLabel("Annotation Label")
+        self.text_box_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.text_box_label.setObjectName("myLabel3")
+        self.text_box_label.setStyleSheet(
+            """
+            #myLabel3 {
+                margin-top: 20px;
+                font-size: 16px;
+                font-weight: bold;
+            }
+        """
+        )
+        text_layout.addWidget(self.text_box_label)
+
+        self.text_box = QLineEdit(self)
+        self.text_box.setPlaceholderText("Enter label here...")
+        self.text_box.setMaximumWidth(300)
+        self.text_box.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        text_layout.addWidget(self.text_box)
+
+        # Add the text layout to the main layout
+        layout.addLayout(text_layout)
 
         self.label2 = QLabel("Mask Level")
         self.label2.setObjectName("myLabel2")
@@ -183,7 +234,6 @@ class RightDrawer(QWidget):
         self.selected_widget = mask
 
     def addMask(self, mask: MaskItem):
-
         self.displayPolygonImage(mask)
         widget = MaskItemWidget(mask)
         item = QListWidgetItem()
@@ -204,10 +254,7 @@ class RightDrawer(QWidget):
         for index in range(self.mask_list.count()):
             item = self.mask_list.item(index)
             widget = self.mask_list.itemWidget(item)
-            if (
-                isinstance(widget, MaskItemWidget)
-                and mask.getName() == widget.label.text()
-            ):
+            if isinstance(widget, MaskItemWidget) and mask.getName() == widget.mask_item.getName():
                 self.mask_list.takeItem(index)
                 self.clearPolygonImage()
                 return
@@ -222,9 +269,7 @@ class RightDrawer(QWidget):
         # Calculate scaling
         bounding_rect = polygon_item.boundingRect()
 
-        scale_factor = min(
-            pixmap_size / bounding_rect.width(), pixmap_size / bounding_rect.height()
-        )
+        scale_factor = min(pixmap_size / bounding_rect.width(), pixmap_size / bounding_rect.height())
         transform = QTransform()
         transform.scale(scale_factor, scale_factor)
         transform.translate(-bounding_rect.left(), -bounding_rect.top())
@@ -246,12 +291,12 @@ class RightDrawer(QWidget):
     def saveFile(self):
         self.save_signal.emit()
 
-    def moveToMask(self, mask):
+    def moveToMask(self, mask: MaskItem):
         self.displayPolygonImage(mask)
         for index in range(self.mask_list.count()):
             item = self.mask_list.item(index)
-            widget = self.mask_list.itemWidget(item)
-            if mask.getName() == widget.label.text():
+            widget: MaskItemWidget = self.mask_list.itemWidget(item)
+            if mask.getName() == widget.mask_item.getName():
                 self.mask_list.setCurrentItem(item)
                 return
 
@@ -262,9 +307,7 @@ class CoordinateDisplayWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setStyleSheet(
-            "CoordinateDisplayWindow {border: 2px solid rgb(225, 225, 225); border-radius: 15px;}"
-        )
+        self.setStyleSheet("CoordinateDisplayWindow {border: 2px solid rgb(225, 225, 225); border-radius: 15px;}")
 
         self.label1 = QLabel("x: - y: -")
         self.label1.setObjectName("label1")

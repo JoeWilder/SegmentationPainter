@@ -14,13 +14,14 @@ class MaskItem(QGraphicsPolygonItem):
         self.next: MaskItem = None
         self.previous: MaskItem = None
         self.name = None
+        self.display_name = None
         self.manager = manager
         self.unique_point = unique_point
+        self.mask_array = None
 
     def draw(self, graphics_view: QGraphicsView, mask_array: np.ndarray):
-        contours, _ = cv2.findContours(
-            mask_array.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
-        )
+        self.mask_array = mask_array
+        contours, _ = cv2.findContours(mask_array.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
         if contours:
             largest_contour = max(contours, key=cv2.contourArea)
@@ -38,6 +39,7 @@ class MaskItem(QGraphicsPolygonItem):
             self.setPen(QPen(QColor(0, 0, 0, 0)))
 
     def drawFixed(self, pixel_array):
+        self.mask_array = pixel_array
         polygon = QPolygonF()
 
         for point in pixel_array:
@@ -51,6 +53,12 @@ class MaskItem(QGraphicsPolygonItem):
 
     def setName(self, name: str):
         self.name = name
+
+    def setDisplayName(self, display_name: str):
+        self.display_name = display_name
+
+    def getDisplayName(self):
+        return self.display_name
 
     def getName(self):
         return self.name
@@ -70,6 +78,7 @@ class MaskItem(QGraphicsPolygonItem):
     def toDictionary(self):
         return {
             "name": self.name,
+            "display_name": self.display_name,
             "mask_color": self.mask_color,
             "points": [(point.x(), point.y()) for point in self.polygon()],
         }
