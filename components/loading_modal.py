@@ -9,9 +9,10 @@ class LoginPopup(QtWidgets.QWidget):
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground)
         self.setAutoFillBackground(True)
-        self.setStyleSheet('''
+        self.setStyleSheet(
+            """
             LoginPopup {
-                background: rgba(0, 0, 0, 0);
+                background: rgba(0, 0, 0, 200);
             }
             QWidget#container {
                 border-radius: 4px;
@@ -20,13 +21,19 @@ class LoginPopup(QtWidgets.QWidget):
             QLabel {
                 padding: 0px;
             }
-        ''')
+        """
+        )
 
         fullLayout = QtWidgets.QVBoxLayout(self)
 
-        self.container = QtWidgets.QWidget(objectName='container')
-        fullLayout.addWidget(self.container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.container.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.container = QtWidgets.QWidget(objectName="container")
+        fullLayout.addWidget(
+            self.container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter
+        )
+        self.container.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
 
         layout = QtWidgets.QVBoxLayout(self.container)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -34,17 +41,22 @@ class LoginPopup(QtWidgets.QWidget):
 
         component_container = QtWidgets.QWidget()
 
-
-        self.container.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
-        layout.addWidget(component_container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.container.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed
+        )
+        layout.addWidget(
+            component_container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter
+        )
 
         base_layout = QtWidgets.QVBoxLayout(component_container)
 
         self.text = text
 
-        self.title = QtWidgets.QLabel(text, objectName='title')
+        self.title = QtWidgets.QLabel(text, objectName="title")
         self.title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.title.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
+        self.title.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         base_layout.addWidget(self.title)
 
         self.spinner = WaitingSpinner(
@@ -56,15 +68,17 @@ class LoginPopup(QtWidgets.QWidget):
             line_length=18,
             line_width=7,
             speed=0.57,
-            color=QtGui.QColor("#05B8CC")
+            color=QtGui.QColor("#05B8CC"),
         )
-
-        
 
         spinner_container = QtWidgets.QWidget()
         spinner_layout = QtWidgets.QVBoxLayout(spinner_container)
-        spinner_layout.addWidget(self.spinner, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
-        base_layout.addWidget(spinner_container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+        spinner_layout.addWidget(
+            self.spinner, alignment=QtCore.Qt.AlignmentFlag.AlignCenter
+        )
+        base_layout.addWidget(
+            spinner_container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter
+        )
 
         self.spinner.start()
 

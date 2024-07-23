@@ -7,6 +7,7 @@ import numpy as np
 
 class MaskItem(QGraphicsPolygonItem):
     """Used to represent a mask polygon"""
+
     def __init__(self, mask_color, manager=None, unique_point=None):
         super().__init__()
         self.mask_color: QColor = mask_color
@@ -17,7 +18,9 @@ class MaskItem(QGraphicsPolygonItem):
         self.unique_point = unique_point
 
     def draw(self, graphics_view: QGraphicsView, mask_array: np.ndarray):
-        contours, _ = cv2.findContours(mask_array.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        contours, _ = cv2.findContours(
+            mask_array.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
+        )
 
         if contours:
             largest_contour = max(contours, key=cv2.contourArea)
@@ -46,32 +49,27 @@ class MaskItem(QGraphicsPolygonItem):
         self.setBrush(brush)
         self.setPen(QPen(QColor(0, 0, 0, 0)))
 
-        
-
     def setName(self, name: str):
         self.name = name
 
     def getName(self):
         return self.name
-    
+
     def setSelected(self, is_selected):
         if is_selected:
             self.setBrush(self.mask_color.darker(150))
         else:
             self.setBrush(self.mask_color)
 
-
-    
     def getMaskManager(self):
         return self.manager
-    
+
     def getUniquePoint(self):
         return self.unique_point
-    
+
     def toDictionary(self):
         return {
-            'name': self.name,
-            'mask_color': self.mask_color,
-            'points': [(point.x(), point.y()) for point in self.polygon()]
+            "name": self.name,
+            "mask_color": self.mask_color,
+            "points": [(point.x(), point.y()) for point in self.polygon()],
         }
-    

@@ -5,6 +5,7 @@ from utils.slider_action import SliderAction
 
 class SegmentAgent:
     """Used to generate image masks from an inputted image and points on the image"""
+
     def __init__(self):
         sam_checkpoint = "./sam_checkpoints/sam_vit_b_01ec64.pth"
         self.last_logits = None
@@ -44,7 +45,7 @@ class SegmentAgent:
         self.last_scores = scores
         bestMask = self.getBestMask(masks, scores)
         return bestMask
-    
+
     def getBestMask(self, masks: list, scores: list) -> list:
         if self.mask_level == SliderAction.AUTO:
             bestScore = 0
@@ -69,6 +70,6 @@ class SegmentAgent:
         )
         masks = mask_generator.generate(self.image)
         return masks
-    
+
     def set_mask_level(self, mask_level: SliderAction):
         self.mask_level = mask_level

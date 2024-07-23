@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class SliderAction(Enum):
     AUTO = 0
     WEAKEST = 1

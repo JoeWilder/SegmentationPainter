@@ -1,9 +1,10 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QErrorMessage, QSpacerItem, QScrollArea, QListWidget, QListWidgetItem, QSlider, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QScrollArea, QListWidget, QListWidgetItem, QSlider  # fmt: skip
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 from PyQt6.QtGui import QPixmap, QPainter, QBrush, QTransform
 from utils.mask import MaskItem
 from utils.slider_action import SliderAction
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from components.image_canvas import ImageCanvas
 
@@ -21,21 +22,20 @@ class DisplayBar(QWidget):
         layout.addStretch()
         self.windowtest = CoordinateDisplayWindow(self)
         layout.addWidget(self.windowtest)
-        
+
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
     def getRightDrawer(self):
         return self.right_drawer
-    
+
     def getCoordinateDisplayWindow(self):
         return self.windowtest
-    
+
     def close(self):
         self.hide()
         self.right_drawer.mask_list.clear()
         self.right_drawer.image_label.clear()
-
 
 
 class MaskItemWidget(QWidget):
@@ -51,9 +51,11 @@ class MaskItemWidget(QWidget):
 
         self.setLayout(layout)
 
+
 class RightDrawer(QWidget):
     save_signal = pyqtSignal()
     mask_level_change_signal = pyqtSignal(SliderAction)
+
     def __init__(self, image_canvas):
         self.image_canvas: ImageCanvas = image_canvas
         super().__init__()
@@ -63,7 +65,9 @@ class RightDrawer(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.setStyleSheet("RightDrawer {border: 2px solid rgb(225, 225, 225); border-radius: 15px;}")
+        self.setStyleSheet(
+            "RightDrawer {border: 2px solid rgb(225, 225, 225); border-radius: 15px;}"
+        )
 
         self.image_label = QLabel()
         self.image_label.setMinimumHeight(100)
@@ -71,12 +75,14 @@ class RightDrawer(QWidget):
 
         self.label1 = QLabel("Current Mask")
         self.label1.setObjectName("myLabel1")
-        self.label1.setStyleSheet("""
+        self.label1.setStyleSheet(
+            """
             #myLabel1 {
                 font-size: 16px;
                 font-weight: bold;
             }
-        """)
+        """
+        )
         self.label1.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.label1)
 
@@ -93,13 +99,15 @@ class RightDrawer(QWidget):
 
         self.label2 = QLabel("Mask Level")
         self.label2.setObjectName("myLabel2")
-        self.label2.setStyleSheet("""
+        self.label2.setStyleSheet(
+            """
             #myLabel2 {
                 margin-top: 40px;
                 font-size: 16px;
                 font-weight: bold;
             }
-        """)
+        """
+        )
         self.label2.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.label2)
 
@@ -115,18 +123,17 @@ class RightDrawer(QWidget):
 
         layout.addWidget(self.slider, alignment=Qt.AlignmentFlag.AlignCenter)
 
-
         self.label3 = QLabel("Best Mask")
         self.label3.setObjectName("myLabel3")
-        self.label3.setStyleSheet("""
+        self.label3.setStyleSheet(
+            """
             #myLabel3 {
                 color: gray;
             }
-        """)
+        """
+        )
         self.label3.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.label3)
-
-
 
         button = QPushButton("Export Image")
         button.setMinimumSize(75, 35)
@@ -136,7 +143,8 @@ class RightDrawer(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         self.setLayout(layout)
 
-        button.setStyleSheet("""
+        button.setStyleSheet(
+            """
             QPushButton {
                 margin-top: 40px;
                 border: 2px solid #007BFF;
@@ -148,9 +156,9 @@ class RightDrawer(QWidget):
             QPushButton:hover {
                 background-color: #fafafa;
             }
-                             """)
+                             """
+        )
 
-        
     def sliderValueChanged(self, index):
         action = SliderAction.fromValue(index)
         self.mask_level = action
@@ -160,7 +168,6 @@ class RightDrawer(QWidget):
     def getTextFromSliderIndex(self, index):
         texts = ["Best Mask", "Weakest", "Medium", "Strongest"]
         return texts[index]
-
 
     def itemClickedEvent(self, item: QListWidgetItem):
         listWidget: MaskItemWidget = self.mask_list.itemWidget(item)
@@ -175,10 +182,8 @@ class RightDrawer(QWidget):
         self.image_canvas.current_mask_manager = mask.getMaskManager()
         self.selected_widget = mask
 
-    
-
     def addMask(self, mask: MaskItem):
-        
+
         self.displayPolygonImage(mask)
         widget = MaskItemWidget(mask)
         item = QListWidgetItem()
@@ -186,7 +191,6 @@ class RightDrawer(QWidget):
         self.mask_list.addItem(item)
         self.mask_list.setItemWidget(item, widget)
         self.mask_list.setCurrentItem(item)
-        
 
     def updateMask(self, mask):
         self.displayPolygonImage(mask)
@@ -195,17 +199,19 @@ class RightDrawer(QWidget):
             return
         item = items[0]
         self.mask_list.setItemWidget(item, MaskItemWidget(mask))
-        
 
     def removeMask(self, mask: MaskItem):
         for index in range(self.mask_list.count()):
             item = self.mask_list.item(index)
             widget = self.mask_list.itemWidget(item)
-            if isinstance(widget, MaskItemWidget) and mask.getName() == widget.label.text():
+            if (
+                isinstance(widget, MaskItemWidget)
+                and mask.getName() == widget.label.text()
+            ):
                 self.mask_list.takeItem(index)
                 self.clearPolygonImage()
                 return
-            
+
     def displayPolygonImage(self, polygon_item: MaskItem):
         pixmap_size = 100
         pixmap = QPixmap(pixmap_size, pixmap_size)
@@ -216,7 +222,9 @@ class RightDrawer(QWidget):
         # Calculate scaling
         bounding_rect = polygon_item.boundingRect()
 
-        scale_factor = min(pixmap_size / bounding_rect.width(), pixmap_size / bounding_rect.height())
+        scale_factor = min(
+            pixmap_size / bounding_rect.width(), pixmap_size / bounding_rect.height()
+        )
         transform = QTransform()
         transform.scale(scale_factor, scale_factor)
         transform.translate(-bounding_rect.left(), -bounding_rect.top())
@@ -232,8 +240,6 @@ class RightDrawer(QWidget):
         self.image_label.setPixmap(pixmap)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        
-
     def clearPolygonImage(self):
         self.image_label.clear()
 
@@ -245,14 +251,9 @@ class RightDrawer(QWidget):
         for index in range(self.mask_list.count()):
             item = self.mask_list.item(index)
             widget = self.mask_list.itemWidget(item)
-            if  mask.getName() == widget.label.text():
+            if mask.getName() == widget.label.text():
                 self.mask_list.setCurrentItem(item)
                 return
-
-        
-
-
-
 
 
 class CoordinateDisplayWindow(QWidget):
@@ -261,15 +262,15 @@ class CoordinateDisplayWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setStyleSheet("CoordinateDisplayWindow {border: 2px solid rgb(225, 225, 225); border-radius: 15px;}")
-
+        self.setStyleSheet(
+            "CoordinateDisplayWindow {border: 2px solid rgb(225, 225, 225); border-radius: 15px;}"
+        )
 
         self.label1 = QLabel("x: - y: -")
         self.label1.setObjectName("label1")
         self.label1.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.setMinimumSize(150, 75)
-
 
         layout.addWidget(self.label1)
         layout.setContentsMargins(0, 0, 0, 0)

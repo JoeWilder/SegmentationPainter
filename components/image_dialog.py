@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QErrorMessage
+from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QDragEnterEvent, QDragLeaveEvent, QDropEvent
 import utils.gui_utils
