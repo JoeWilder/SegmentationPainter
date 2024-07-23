@@ -322,6 +322,7 @@ class ImageCanvas(QGraphicsView):
         self.scene.clear()
         self.current_mask_manager = None
         self.viewport_moved = True
+        self.image = None
         self.hide()
 
     def setToolMode(self, tool_mode: ToolMode):
@@ -371,7 +372,11 @@ class ImageCanvas(QGraphicsView):
                 if not manager.hasNothingDisplayed():
                     polygons.append(manager.displayed_mask.toDictionary())
 
-            arr = qimage2ndarray.byte_view(self.image)
+            # When saving a project from a project, the r and b values in the image get swapped, so we need to swap them back
+            if self.image_path == None:
+                arr = qimage2ndarray.rgb_view(self.image, "big")
+            else:
+                arr = qimage2ndarray.rgb_view(self.image, "little")
             project = [arr, polygons]
             filehandler = open(path, "wb")
             pickle.dump(project, filehandler, pickle.HIGHEST_PROTOCOL)
