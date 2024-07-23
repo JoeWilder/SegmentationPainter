@@ -9,28 +9,26 @@ def createIcon(filename):
 
 
 def getFilePath():
-    path, _ = QFileDialog.getOpenFileName(
-        None, "Choose Image", "", "Image (*.png *.jpg *.jpeg *.gif *.tif *.tiff *.sgmt)"
-    )
+    path, _ = QFileDialog.getOpenFileName(None, "Choose Image", "", "Image (*.png *.jpg *.jpeg *.gif *.tif *.tiff *.sgmt)")
     return path
 
 
 def getProjectPath():
-    path, _ = QFileDialog.getOpenFileName(
-        None, "Choose Segmentation Project", "", "Project (*.sgmt)"
-    )
+    path, _ = QFileDialog.getOpenFileName(None, "Choose Segmentation Project", "", "Project (*.sgmt)")
     return path
 
 
 def saveFilePath():
-    path, _ = QFileDialog.getSaveFileName(
-        None, "Choose Image", "masked_image.png", "Image (*.png)"
-    )
+    path, _ = QFileDialog.getSaveFileName(None, "Choose Image", "masked_image.png", "Image (*.png)")
+    return path
+
+
+def saveJsonPath(file_name: str):
+    file_name = file_name.split(".")[0]
+    path, _ = QFileDialog.getSaveFileName(None, "Save json", f"{file_name}-annotations.json", "Json (*.json)")
     return path
 
 
 def saveProjectPath():
-    path, _ = QFileDialog.getSaveFileName(
-        None, "Saving project", "project.sgmt", "Project (*.sgmt)"
-    )
+    path, _ = QFileDialog.getSaveFileName(None, "Saving project", "project.sgmt", "Project (*.sgmt)")
     return path

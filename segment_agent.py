@@ -1,6 +1,7 @@
 import numpy as np
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
 from utils.slider_action import SliderAction
+from pycocotools import mask as maskUtils
 
 
 class SegmentAgent:
@@ -32,6 +33,27 @@ class SegmentAgent:
         self.last_scores = scores
         bestMask = self.getBestMask(masks, scores)
         return bestMask
+
+    def generate_coco_annotations(self, id: int, image_id: int, mask) -> dict:
+
+        mask = (mask * 255).astype(np.uint8)
+
+        category_id = 1
+        rle_encoded_mask = maskUtils.encode(np.asfortranarray(mask))
+        rle_encoded_mask["counts"] = rle_encoded_mask["counts"].decode("utf-8")
+
+        segmentation = {}
+
+        annotation = {
+            "id": id,
+            "image_id": image_id,
+            "category_id": category_id,
+            "bbox": maskUtils.toBbox(rle_encoded_mask).tolist(),
+            "area": int(mask.sum()),
+            "segmentation": rle_encoded_mask,
+            "iscrowd": 0,
+        }
+        return annotation
 
     def generateMaskFromPoints(self, points):
         input_point = np.array([point[0] for point in points])
