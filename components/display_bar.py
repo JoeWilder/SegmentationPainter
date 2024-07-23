@@ -146,7 +146,6 @@ class RightDrawer(QWidget):
         self.text_box.setPlaceholderText("Enter label here...")
         self.text_box.setMaximumWidth(300)
         self.text_box.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.text_box.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         text_layout.addWidget(self.text_box)
 
         # Add the text layout to the main layout
