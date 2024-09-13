@@ -148,7 +148,6 @@ class RightDrawer(QWidget):
         self.text_box.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         text_layout.addWidget(self.text_box)
 
-        # Add the text layout to the main layout
         layout.addLayout(text_layout)
 
         self.label2 = QLabel("Mask Level")
