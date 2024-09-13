@@ -82,3 +82,7 @@ class MaskItem(QGraphicsPolygonItem):
             "mask_color": self.mask_color,
             "points": [(point.x(), point.y()) for point in self.polygon()],
         }
+
+    def setColor(self, color: QColor):
+        self.setBrush(color)
+        self.mask_color = color

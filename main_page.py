@@ -1,11 +1,12 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QColorDialog, QLayout, QToolBar  # fmt: skip
-from PyQt6.QtGui import QAction, QActionGroup
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QColorDialog, QLayout, QToolBar, QListWidgetItem  # fmt: skip
+from PyQt6.QtGui import QAction, QActionGroup, QColor
 from PyQt6.QtCore import Qt
 
 from components.display_bar import DisplayBar
 from components.image_canvas import ImageCanvas
 from components.image_dialog import ChooseImageDialog
-from components.loading_modal import LoginPopup
+from components.loading_modal import LoadingModal
+from components.color_modal import ColorModal
 
 from segment_agent import SegmentAgent
 from utils.async_worker import AsyncWorker
@@ -99,6 +100,9 @@ class MainPage(QMainWindow):
         self.redo_act.setShortcut("Ctrl+Y")
         self.redo_act.triggered.connect(self.redoButtonClicked)
 
+        self.bulk_coloring_act = QAction(utils.createIcon("palette.png"), "Color Masks by Type", self)
+        self.bulk_coloring_act.triggered.connect(self.colorMasksByType)
+
         self.toggle_view_act = QAction(utils.createIcon("right_menu_open.png"), "Toggle Mask Menu", self)
         self.toggle_view_act.triggered.connect(self.toggleMaskMenu)
 
@@ -113,6 +117,7 @@ class MainPage(QMainWindow):
         edit_menu = self.menu_bar.addMenu("Edit")
         edit_menu.addAction(self.undo_act)
         edit_menu.addAction(self.redo_act)
+        edit_menu.addAction(self.bulk_coloring_act)
         view_menu = self.menu_bar.addMenu("View")
         view_menu.addAction(self.toggle_view_act)
         self.menu_bar.setEnabled(False)
@@ -150,7 +155,7 @@ class MainPage(QMainWindow):
         self.actions: list[QAction] = [self.brush_action, self.eraser_action]
 
     def showDialog(self, text):
-        self.dialog = LoginPopup(self, text)
+        self.dialog = LoadingModal(self, text)
         self.dialog.start()
 
     def loadSegmentAgent(self):
@@ -318,6 +323,24 @@ class MainPage(QMainWindow):
                 self.mask_color = color
                 if self.image_canvas != None:
                     self.image_canvas.setMaskColor(color)
+
+    def colorMasksByType(self):
+        mask_list = self.display_bar.right_drawer.mask_list
+        unique_types = []
+        for i in range(mask_list.count()):
+            mask_type = mask_list.itemWidget(mask_list.item(i)).mask_item.getDisplayName()
+            if mask_type not in unique_types:
+                unique_types.append(mask_type)
+
+        color_modal = ColorModal(self, unique_types)
+        color_modal.apply_color_signal.connect(self.applyMaskTypeColoring)
+        color_modal.setSelectedColor(self.image_canvas.getMaskColor())
+        color_modal.start()
+
+    def applyMaskTypeColoring(self, mask_class: str, color: QColor):
+        for manager in self.image_canvas.mask_managers:
+            if mask_class == manager.getCurrentlyDisplayedMask().getDisplayName():
+                manager.getCurrentlyDisplayedMask().setColor(color)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

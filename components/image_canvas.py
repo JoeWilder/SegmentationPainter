@@ -438,7 +438,7 @@ class ImageCanvas(QGraphicsView):
 
         data: dict = {}
 
-        info = {"date_created": datetime.now(), "version": 1, "description": "Exported from SegmentationPainter"}
+        info = {"date_created": str(datetime.now()), "version": 1, "description": "Exported from SegmentationPainter"}
 
         data["info"] = info
 
@@ -450,6 +450,8 @@ class ImageCanvas(QGraphicsView):
 
         data["images"] = images
 
+        data["annotations"] = []
+
         for mask_manager in self.mask_managers:
 
             maskItem: MaskItem = mask_manager.getCurrentlyDisplayedMask()
@@ -457,9 +459,9 @@ class ImageCanvas(QGraphicsView):
             if maskItem.mask_array is None:
                 continue
 
-            datastr = self.segment_agent.generate_coco_annotations(self.image_path, maskItem.mask_array)
+            datastr = self.segment_agent.generate_coco_annotations(self.image_path, 0, maskItem.mask_array)
 
-            data.append(datastr)
+            data["annotations"].append(datastr)
 
         with open(file_path, "w") as f:
             json.dump(data, f)

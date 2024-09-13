@@ -2,7 +2,7 @@ from PyQt6 import QtCore, QtWidgets, QtGui
 from components.loading_spinner import WaitingSpinner
 
 
-class LoginPopup(QtWidgets.QWidget):
+class LoadingModal(QtWidgets.QWidget):
     def __init__(self, parent, text=None):
         super().__init__(parent)
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -11,7 +11,7 @@ class LoginPopup(QtWidgets.QWidget):
         self.setAutoFillBackground(True)
         self.setStyleSheet(
             """
-            LoginPopup {
+            LoadingModal {
                 background: rgba(0, 0, 0, 200);
             }
             QWidget#container {
@@ -27,9 +27,7 @@ class LoginPopup(QtWidgets.QWidget):
         fullLayout = QtWidgets.QVBoxLayout(self)
 
         self.container = QtWidgets.QWidget(objectName="container")
-        fullLayout.addWidget(
-            self.container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter
-        )
+        fullLayout.addWidget(self.container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
         self.container.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Expanding,
@@ -41,12 +39,8 @@ class LoginPopup(QtWidgets.QWidget):
 
         component_container = QtWidgets.QWidget()
 
-        self.container.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed
-        )
-        layout.addWidget(
-            component_container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter
-        )
+        self.container.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
+        layout.addWidget(component_container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
         base_layout = QtWidgets.QVBoxLayout(component_container)
 
@@ -54,9 +48,7 @@ class LoginPopup(QtWidgets.QWidget):
 
         self.title = QtWidgets.QLabel(text, objectName="title")
         self.title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.title.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed
-        )
+        self.title.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
         base_layout.addWidget(self.title)
 
         self.spinner = WaitingSpinner(
@@ -73,12 +65,8 @@ class LoginPopup(QtWidgets.QWidget):
 
         spinner_container = QtWidgets.QWidget()
         spinner_layout = QtWidgets.QVBoxLayout(spinner_container)
-        spinner_layout.addWidget(
-            self.spinner, alignment=QtCore.Qt.AlignmentFlag.AlignCenter
-        )
-        base_layout.addWidget(
-            spinner_container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter
-        )
+        spinner_layout.addWidget(self.spinner, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+        base_layout.addWidget(spinner_container, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
         self.spinner.start()
 
