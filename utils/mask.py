@@ -19,9 +19,12 @@ class MaskItem(QGraphicsPolygonItem):
         self.unique_point = unique_point
         self.mask_array = None
 
-    def draw(self, graphics_view: QGraphicsView, mask_array: np.ndarray):
+    def draw(self, graphics_view: QGraphicsView, mask_array: np.ndarray, map=True):
         self.mask_array = mask_array
+        # np.save("DEBUG1.npy", self.mask_array)
         contours, _ = cv2.findContours(mask_array.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        num_true_values = np.sum(mask_array)
+        # print(f"true vals: {num_true_values}")
 
         if contours:
             largest_contour = max(contours, key=cv2.contourArea)
@@ -29,8 +32,14 @@ class MaskItem(QGraphicsPolygonItem):
 
             for point in largest_contour:
                 x, y = point[0]
-                scene_point = graphics_view.mapToScene(x, y)
-                polygon.append(scene_point)
+                if map:
+                    scene_point = graphics_view.mapToScene(x, y)
+                    # print(f"Original: ({x}, {y}), Scene: {scene_point}")
+                    polygon.append(scene_point)
+                else:
+                    qpoint = QPointF(x, y)
+                    # print(f"Original: ({x}, {y}), QPointF: {qpoint}")
+                    polygon.append(qpoint)
 
             self.setPolygon(polygon)
 
@@ -51,31 +60,31 @@ class MaskItem(QGraphicsPolygonItem):
         self.setBrush(brush)
         self.setPen(QPen(QColor(0, 0, 0, 0)))
 
-    def setName(self, name: str):
+    def set_name(self, name: str):
         self.name = name
 
-    def setDisplayName(self, display_name: str):
+    def set_display_name(self, display_name: str):
         self.display_name = display_name
 
-    def getDisplayName(self):
+    def get_display_name(self):
         return self.display_name
 
-    def getName(self):
+    def get_name(self):
         return self.name
 
-    def setSelected(self, is_selected):
+    def set_selected(self, is_selected):
         if is_selected:
             self.setBrush(self.mask_color.darker(150))
         else:
             self.setBrush(self.mask_color)
 
-    def getMaskManager(self):
+    def get_mask_manager(self):
         return self.manager
 
-    def getUniquePoint(self):
+    def get_unique_point(self):
         return self.unique_point
 
-    def toDictionary(self):
+    def to_dictionary(self):
         return {
             "name": self.name,
             "display_name": self.display_name,
@@ -83,6 +92,6 @@ class MaskItem(QGraphicsPolygonItem):
             "points": [(point.x(), point.y()) for point in self.polygon()],
         }
 
-    def setColor(self, color: QColor):
+    def set_color(self, color: QColor):
         self.setBrush(color)
         self.mask_color = color

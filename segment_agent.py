@@ -42,8 +42,6 @@ class SegmentAgent:
         rle_encoded_mask = maskUtils.encode(np.asfortranarray(mask))
         rle_encoded_mask["counts"] = rle_encoded_mask["counts"].decode("utf-8")
 
-        segmentation = {}
-
         annotation = {
             "id": id,
             "image_id": image_id,

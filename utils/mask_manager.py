@@ -14,8 +14,8 @@ class MaskManager:
         self.masks = []
         self.clicked_points = []
         self.root_mask = MaskItem(QColor(0, 0, 0, 0))
-        self.root_mask.setName(name)
-        self.root_mask.setSelected(True)
+        self.root_mask.set_name(name)
+        self.root_mask.set_selected(True)
         self.last_mask = self.root_mask
         self.displayed_mask = self.root_mask
         self.isSelected = True
@@ -30,12 +30,12 @@ class MaskManager:
     def displayNextMaskItem(self, display_bar: DisplayBar = None):
         if self.displayed_mask.next is not None:
             if self.displayed_mask != self.root_mask:
-                self.graphics_view.getScene().removeItem(self.displayed_mask)
+                self.graphics_view.get_scene().removeItem(self.displayed_mask)
             self.displayed_mask = self.displayed_mask.next
-            self.displayed_mask.setSelected(True)
+            self.displayed_mask.set_selected(True)
 
             self.graphics_view.scene.addItem(self.displayed_mask)
-            unique_point = self.displayed_mask.getUniquePoint()
+            unique_point = self.displayed_mask.get_unique_point()
             self.addClickedPoint(unique_point[0], unique_point[1], unique_point[2])
 
             if display_bar == None:
@@ -63,7 +63,7 @@ class MaskManager:
         return mask_item == self.root_mask
 
     def unselectCurrentMask(self):
-        self.displayed_mask.setSelected(False)
+        self.displayed_mask.set_selected(False)
 
     def addClickedPoint(self, x: int, y: int, positive=True):
         point_polarity = 1 if positive else 0
