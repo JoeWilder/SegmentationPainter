@@ -51,7 +51,7 @@ class MaskItemWidget(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        self.label = QLabel(self.mask_item.getDisplayName())
+        self.label = QLabel(self.mask_item.get_display_name())
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.label)
         self.label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -74,7 +74,7 @@ class MaskItemWidget(QWidget):
 
     def finishEditing(self):
         new_name = self.line_edit.text()
-        self.mask_item.setDisplayName(new_name)
+        self.mask_item.set_display_name(new_name)
         self.label.setText(new_name)
         self.line_edit.setVisible(False)
         self.label.setVisible(True)
@@ -230,12 +230,12 @@ class RightDrawer(QWidget):
         mask = listWidget.mask_item
 
         if self.selected_widget != None:
-            self.selected_widget.setSelected(False)
+            self.selected_widget.set_selected(False)
 
         self.displayPolygonImage(mask)
-        mask.setSelected(True)
+        mask.set_selected(True)
 
-        self.image_canvas.current_mask_manager = mask.getMaskManager()
+        self.image_canvas.current_mask_manager = mask.get_mask_manager()
         self.selected_widget = mask
 
     def addMask(self, mask: MaskItem):
@@ -259,7 +259,7 @@ class RightDrawer(QWidget):
         for index in range(self.mask_list.count()):
             item = self.mask_list.item(index)
             widget = self.mask_list.itemWidget(item)
-            if isinstance(widget, MaskItemWidget) and mask.getName() == widget.mask_item.getName():
+            if isinstance(widget, MaskItemWidget) and mask.get_name() == widget.mask_item.get_name():
                 self.mask_list.takeItem(index)
                 self.clearPolygonImage()
                 return
@@ -301,7 +301,7 @@ class RightDrawer(QWidget):
         for index in range(self.mask_list.count()):
             item = self.mask_list.item(index)
             widget: MaskItemWidget = self.mask_list.itemWidget(item)
-            if mask.getName() == widget.mask_item.getName():
+            if mask.get_name() == widget.mask_item.get_name():
                 self.mask_list.setCurrentItem(item)
                 return
 

@@ -3,8 +3,10 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QDragEnterEvent, QDragLeaveEvent, QDropEvent
 import utils.gui_utils
 
+
 class ChooseImageDialog(QWidget):
     """A window that prompts the user to select an image"""
+
     image_chosen = pyqtSignal(str)
 
     def __init__(self, parent=None):
@@ -12,7 +14,7 @@ class ChooseImageDialog(QWidget):
         self.parent = parent
         self.setAcceptDrops(True)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground)
-        
+
         self.common_style = """
             ChooseImageDialog {
                 border: 3px dotted gray;
@@ -39,7 +41,7 @@ class ChooseImageDialog(QWidget):
                 background-color: #fafafa;
             }
         """
-        
+
         self.setStyleSheet(self.common_style)
 
         layout = QVBoxLayout(self)
@@ -91,9 +93,9 @@ class ChooseImageDialog(QWidget):
             event.accept()
         else:
             event.ignore()
-        
+
     def selectImage(self):
-        path = utils.gui_utils.getFilePath()
+        path = utils.gui_utils.get_file_path()
         if path == "":
             return
         self.image_chosen.emit(path)

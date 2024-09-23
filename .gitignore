@@ -162,3 +162,4 @@ cython_debug/
 #.idea/
 
 /sam_checkpoints/*
+functionality.txt
