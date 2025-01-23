@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QColorDialog, QLayout, QToolBar
-from PyQt6.QtGui import QAction, QActionGroup, QColor
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QColorDialog, QLayout
+from PyQt6.QtGui import QAction, QColor
 from PyQt6.QtCore import Qt
 
 from components.display_bar import DisplayBar
@@ -13,7 +13,6 @@ from components.tool_bar import ToolBar
 from segment_agent import SegmentAgent
 from utils.async_worker import AsyncWorker
 from utils.checkpoint_downloader import CheckpointDownloader
-from utils.mask import MaskItem
 from utils.tool_mode import ToolMode
 import utils.gui_utils as utils
 

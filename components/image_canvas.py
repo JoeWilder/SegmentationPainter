@@ -491,29 +491,52 @@ class ImageCanvas(QGraphicsView):
             json.dump(data, f)
 
     def export_shapefile(self, file_path: str):
-        extension = os.path.splitext(self.image_path)[-1]
-        if extension in [".tif", ".tiff"]:
-            with rasterio.open(self.image_path) as src:
-                transform = src.transform
-                crs = src.crs
 
-            polygons = []
-            for item in self.scene.items():
-                if isinstance(item, QGraphicsPolygonItem):
-                    polygon = item.polygon()
-
-                    points = [(point.x(), point.y()) for point in polygon]
-
-                    if len(points) >= 3:
-                        transformed_points = [transform * (x, y) for x, y in points]
-
-                        poly = Polygon(transformed_points)
-                        polygons.append(poly)
-
-            gdf = gpd.GeoDataFrame(geometry=polygons)
-            gdf.set_crs(crs, inplace=True)
-            gdf.to_file(file_path)
+        if self.image_path is None:
+            extension = ".tif"
         else:
+            extension = os.path.splitext(self.image_path)[-1]
+
+        # TODO added a hotfix for exporting shapefiles from loaded sgmt project files. Currently, loaded sgmt project files
+        # do not have the image path, so the extension can not be determined. If we are on a sgmt file, just try both
+        # for now (not ideal, but works for now)
+        try:
+            if extension in [".tif", ".tiff"]:
+                with rasterio.open(self.image_path) as src:
+                    transform = src.transform
+                    crs = src.crs
+
+                polygons = []
+                for item in self.scene.items():
+                    if isinstance(item, QGraphicsPolygonItem):
+                        polygon = item.polygon()
+
+                        points = [(point.x(), point.y()) for point in polygon]
+
+                        if len(points) >= 3:
+                            transformed_points = [transform * (x, y) for x, y in points]
+
+                            poly = Polygon(transformed_points)
+                            polygons.append(poly)
+
+                gdf = gpd.GeoDataFrame(geometry=polygons)
+                gdf.set_crs(crs, inplace=True)
+                gdf.to_file(file_path)
+            else:
+                polygons = []
+                for item in self.scene.items():
+                    if isinstance(item, QGraphicsPolygonItem):
+                        polygon = item.polygon()
+
+                        points = [(point.x(), -point.y()) for point in polygon]
+                        if len(points) >= 3:
+                            poly = Polygon(points)
+                            polygons.append(poly)
+
+                gdf = gpd.GeoDataFrame(geometry=polygons)
+                # gdf.set_crs(epsg=6346, inplace=True)
+                gdf.to_file(file_path)
+        except Exception as e:
             polygons = []
             for item in self.scene.items():
                 if isinstance(item, QGraphicsPolygonItem):
