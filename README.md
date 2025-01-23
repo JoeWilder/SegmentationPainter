@@ -4,7 +4,6 @@ Segmentation Painter is an application designed for image annotation and segment
 
 
 ## Project Setup
-Make sure you have the following dependencies installed:
 
 1. Clone the repository
    ```sh
