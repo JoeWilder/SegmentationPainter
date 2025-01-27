@@ -1,9 +1,11 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QScrollArea, QListWidget, QListWidgetItem, QSlider, QLineEdit, QSizePolicy , QHBoxLayout  # fmt: skip
+from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QScrollArea, QListWidget, QListWidgetItem, QSlider, QLineEdit, QSizePolicy , QHBoxLayout, QComboBox  # fmt: skip
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 from PyQt6.QtGui import QPixmap, QPainter, QBrush, QTransform
 from utils.mask import MaskItem
 from utils.slider_action import SliderAction
 from typing import TYPE_CHECKING
+
+import os
 
 if TYPE_CHECKING:
     from components.image_canvas import ImageCanvas
@@ -40,7 +42,7 @@ class DisplayBar(QWidget):
         self.right_drawer.selected_widget = None
 
     def getAnnotationLabel(self):
-        return self.right_drawer.text_box.text()
+        return self.right_drawer.annotation_drop_down.currentText()
 
 
 class MaskItemWidget(QWidget):
@@ -128,25 +130,48 @@ class RightDrawer(QWidget):
         text_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         text_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.text_box_label = QLabel("Annotation Label")
-        self.text_box_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.text_box_label.setObjectName("myLabel3")
-        self.text_box_label.setStyleSheet(
+        self.annotation_dropdown_label = QLabel("Annotation Label")
+        self.annotation_dropdown_label.setMaximumWidth(300)
+        self.annotation_dropdown_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.annotation_dropdown_label.setObjectName("AnnotationLabel")
+        self.annotation_dropdown_label.setStyleSheet(
             """
-            #myLabel3 {
+            #AnnotationLabel {
                 margin-top: 20px;
                 font-size: 16px;
                 font-weight: bold;
             }
         """
         )
-        text_layout.addWidget(self.text_box_label)
 
-        self.text_box = QLineEdit(self)
-        self.text_box.setPlaceholderText("Enter label here...")
-        self.text_box.setMaximumWidth(300)
-        self.text_box.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        text_layout.addWidget(self.text_box)
+        text_layout.addWidget(self.annotation_dropdown_label)
+
+        self.annotation_drop_down = QComboBox()
+
+        if os.path.exists("./labels.txt"):
+            with open("./labels.txt", "r") as f:
+                lines = f.readlines()
+                lines = [line.strip() for line in lines]
+                lines.sort()
+                self.annotation_drop_down.addItems(lines)
+        else:
+            self.annotation_drop_down.addItem("coral")
+
+        self.annotation_drop_down.setObjectName("myLabel3")
+        self.annotation_drop_down.setStyleSheet(
+            """
+            #myLabel3 {
+                font-size: 16px;
+                font-weight: bold;
+            }
+        """
+        )
+
+        self.annotation_drop_down.setEditable(True)
+        self.annotation_drop_down.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.annotation_drop_down.lineEdit().setReadOnly(True)
+
+        text_layout.addWidget(self.annotation_drop_down)
 
         layout.addLayout(text_layout)
 
@@ -185,7 +210,7 @@ class RightDrawer(QWidget):
             #myLabel3 {
                 color: gray;
             }
-        """
+            """
         )
         self.label3.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.label3)
