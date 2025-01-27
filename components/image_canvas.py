@@ -507,46 +507,60 @@ class ImageCanvas(QGraphicsView):
                     crs = src.crs
 
                 polygons = []
+                labels = []
                 for item in self.scene.items():
                     if isinstance(item, QGraphicsPolygonItem):
-                        polygon = item.polygon()
+                        label = item.get_display_name()
+                        print(label)
 
+                        polygon = item.polygon()
                         points = [(point.x(), point.y()) for point in polygon]
 
                         if len(points) >= 3:
                             transformed_points = [transform * (x, y) for x, y in points]
-
                             poly = Polygon(transformed_points)
                             polygons.append(poly)
+                            labels.append(label)
 
-                gdf = gpd.GeoDataFrame(geometry=polygons)
+                gdf = gpd.GeoDataFrame({"label": labels, "geometry": polygons})
                 gdf.set_crs(crs, inplace=True)
                 gdf.to_file(file_path)
             else:
                 polygons = []
+                labels = []
                 for item in self.scene.items():
                     if isinstance(item, QGraphicsPolygonItem):
-                        polygon = item.polygon()
+                        label = item.get_display_name()
+                        print(label)
 
+                        polygon = item.polygon()
                         points = [(point.x(), -point.y()) for point in polygon]
+
                         if len(points) >= 3:
                             poly = Polygon(points)
                             polygons.append(poly)
+                            labels.append(label)
 
-                gdf = gpd.GeoDataFrame(geometry=polygons)
+                gdf = gpd.GeoDataFrame({"label": labels, "geometry": polygons})
                 # gdf.set_crs(epsg=6346, inplace=True)
                 gdf.to_file(file_path)
         except Exception as e:
+            print(f"Error occurred: {e}")
             polygons = []
+            labels = []
             for item in self.scene.items():
                 if isinstance(item, QGraphicsPolygonItem):
-                    polygon = item.polygon()
+                    label = item.get_display_name()
+                    print(label)
 
+                    polygon = item.polygon()
                     points = [(point.x(), -point.y()) for point in polygon]
+
                     if len(points) >= 3:
                         poly = Polygon(points)
                         polygons.append(poly)
+                        labels.append(label)
 
-            gdf = gpd.GeoDataFrame(geometry=polygons)
+            gdf = gpd.GeoDataFrame({"label": labels, "geometry": polygons})
             # gdf.set_crs(epsg=6346, inplace=True)
             gdf.to_file(file_path)

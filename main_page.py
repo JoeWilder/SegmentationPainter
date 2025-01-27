@@ -18,21 +18,17 @@ import utils.gui_utils as utils
 
 
 class MainPage(QMainWindow):
-    """The main page of the application. This page handles creation of the top menu bar, the left tool bar.
-    \nIt also creates a dialog for choosing images, loading screens, and the image canvas responsible for displaying and editing images.
+    """The main page of the application. This page handles creation of the top menu bar and the left tool bar.
+    \nIt also creates a dialog for choosing images, handles loading screens, and manages the image canvas responsible for displaying and editing images.
     \nWindow visibility and segment agent creation is also handled here."""
 
     def __init__(self):
         super().__init__()
         self.margin_height: int = 200
         self.margin_width: int = 400
-        self.image_canvas: ImageCanvas = None
         self.dialog: LoadingModal = None
-
         self.tool_mode: ToolMode = ToolMode.CREATE_MASK
-
         self.image_canvas = ImageCanvas()
-
         self.display_bar = DisplayBar(self.image_canvas)
         self.image_canvas.set_coord_display(self.display_bar)
 
@@ -279,7 +275,7 @@ class MainPage(QMainWindow):
         mask_list = self.display_bar.right_drawer.mask_list
         unique_types = []
         for i in range(mask_list.count()):
-            mask_type = mask_list.itemWidget(mask_list.item(i)).mask_item.getDisplayName()
+            mask_type = mask_list.itemWidget(mask_list.item(i)).mask_item.get_display_name()
             if mask_type not in unique_types:
                 unique_types.append(mask_type)
 
@@ -290,8 +286,8 @@ class MainPage(QMainWindow):
 
     def apply_mask_type_coloring(self, mask_class: str, color: QColor):
         for manager in self.image_canvas.mask_managers:
-            if mask_class == manager.getCurrentlyDisplayedMask().getDisplayName():
-                manager.getCurrentlyDisplayedMask().setColor(color)
+            if mask_class == manager.getCurrentlyDisplayedMask().get_display_name():
+                manager.getCurrentlyDisplayedMask().set_color(color)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
