@@ -52,7 +52,7 @@ class ChooseImageDialog(QWidget):
         icon_label.setPixmap(pixmap.scaledToWidth(100))
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        label1 = QLabel("Drag Image/Project Here")
+        label1 = QLabel("Drag Image/GeoTIFF Here")
         label1.setObjectName("label1")
         label1.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -88,7 +88,7 @@ class ChooseImageDialog(QWidget):
         if path == "":
             event.ignore()
         self.setStyleSheet(self.common_style)
-        if path.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".tif", ".tiff", ".sgmt")):
+        if path.lower().endswith((".png", ".jpg", ".jpeg", ".tif", ".tiff")):
             self.image_chosen.emit(path)
             event.accept()
         else:

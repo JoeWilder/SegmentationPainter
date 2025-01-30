@@ -5,14 +5,14 @@ import cv2
 import numpy as np
 
 
-class MaskItem(QGraphicsPolygonItem):
+class Polygon(QGraphicsPolygonItem):
     """Used to represent a mask polygon"""
 
     def __init__(self, mask_color, manager=None, unique_point=None):
         super().__init__()
         self.mask_color: QColor = mask_color
-        self.next: MaskItem = None
-        self.previous: MaskItem = None
+        self.next: Polygon = None
+        self.previous: Polygon = None
         self.name = None
         self.display_name = None
         self.manager = manager
