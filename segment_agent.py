@@ -1,6 +1,6 @@
 import numpy as np
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
-from utils.slider_action import SliderAction
+from utils.slider_strength import SliderStrength
 from pycocotools import mask as maskUtils
 
 
@@ -16,7 +16,7 @@ class SegmentAgent:
         self.sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
         self.sam.to(device=device)
         self.predictor = SamPredictor(self.sam)
-        self.mask_level = SliderAction.AUTO
+        self.mask_level = SliderStrength.AUTO
 
     def setImage(self, image_array):
         self.predictor.set_image(image_array)
@@ -67,7 +67,7 @@ class SegmentAgent:
         return bestMask
 
     def getBestMask(self, masks: list, scores: list) -> list:
-        if self.mask_level == SliderAction.AUTO:
+        if self.mask_level == SliderStrength.AUTO:
             bestScore = 0
             bestMask = None
             for _, (mask, score) in enumerate(zip(masks, scores)):
@@ -91,5 +91,5 @@ class SegmentAgent:
         masks = mask_generator.generate(self.image)
         return masks
 
-    def set_mask_level(self, mask_level: SliderAction):
+    def set_mask_level(self, mask_level: SliderStrength):
         self.mask_level = mask_level

@@ -1,14 +1,14 @@
 from enum import Enum
 
 
-class SliderAction(Enum):
+class SliderStrength(Enum):
     AUTO = 0
     WEAKEST = 1
     MEDIUM = 2
     STRONGEST = 3
 
     def fromValue(value):
-        for action in SliderAction:
+        for action in SliderStrength:
             if action.value == value:
                 return action
         return None

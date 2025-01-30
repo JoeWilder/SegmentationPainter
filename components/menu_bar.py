@@ -5,7 +5,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QEvent, QObject, QBuffe
 from segment_agent import SegmentAgent
 from utils.async_worker import AsyncWorker
 from utils.checkpoint_downloader import CheckpointDownloader
-from utils.mask import MaskItem
+from utils.polygon import Polygon
 from utils.tool_mode import ToolMode
 import utils.gui_utils as utils
 
@@ -13,11 +13,10 @@ import utils.gui_utils as utils
 class MenuBar(QMenuBar):
     select_image_event = pyqtSignal()
     close_canvas_event = pyqtSignal()
-    save_project_event = pyqtSignal()
-    load_project_event = pyqtSignal()
     export_image_event = pyqtSignal()
     export_json_event = pyqtSignal()
     export_shapefile_event = pyqtSignal()
+    import_shapefile_event = pyqtSignal()
     undo_clicked_event = pyqtSignal()
     redo_clicked_event = pyqtSignal()
     color_masks_by_type_event = pyqtSignal()
@@ -32,28 +31,24 @@ class MenuBar(QMenuBar):
         self.exit_act.setShortcut("Ctrl+Q")
         self.exit_act.triggered.connect(self.close)
 
-        self.open_act = QAction(utils.createIcon("file_open.png"), "Open", self)
+        self.open_act = QAction(utils.createIcon("file_open.png"), "Open New Image", self)
         self.open_act.setShortcut("Ctrl+O")
         self.open_act.triggered.connect(lambda: self.select_image_event.emit())
 
-        self.close_act = QAction(utils.createIcon("close.png"), "Close", self)
+        self.close_act = QAction(utils.createIcon("close.png"), "Close Image", self)
         self.close_act.triggered.connect(lambda: self.close_canvas_event.emit())
 
-        self.save_act = QAction(utils.createIcon("save.png"), "Save", self)
-        self.save_act.setShortcut("Ctrl+S")
-        self.save_act.triggered.connect(lambda: self.save_project_event.emit())
-
-        self.load_act = QAction(utils.createIcon("load.png"), "Load", self)
-        self.load_act.triggered.connect(lambda: self.load_project_event.emit())
-
-        self.export_act = QAction(utils.createIcon("export.png"), "Export", self)
+        self.export_act = QAction(utils.createIcon("export.png"), "Export Image", self)
         self.export_act.triggered.connect(lambda: self.export_image_event.emit())
 
-        self.export_json_act = QAction(utils.createIcon("export.png"), "Export Json data", self)
+        self.export_json_act = QAction(utils.createIcon("export.png"), "Export JSON data", self)
         self.export_json_act.triggered.connect(lambda: self.export_json_event.emit())
 
-        self.export_shapefile_act = QAction(utils.createIcon("export.png"), "Export shapefile", self)
+        self.export_shapefile_act = QAction(utils.createIcon("export.png"), "Export Shapefile", self)
         self.export_shapefile_act.triggered.connect(lambda: self.export_shapefile_event.emit())
+
+        self.import_shapefile_act = QAction(utils.createIcon("file_open.png"), "Import Shapefile", self)
+        self.import_shapefile_act.triggered.connect(lambda: self.import_shapefile_event.emit())
 
         self.undo_act = QAction(utils.createIcon("undo.png"), "Undo", self)
         self.undo_act.setShortcut("Ctrl+Z")
@@ -72,11 +67,10 @@ class MenuBar(QMenuBar):
         file_menu = self.addMenu("File")
         file_menu.addAction(self.open_act)
         file_menu.addAction(self.close_act)
-        file_menu.addAction(self.save_act)
-        file_menu.addAction(self.load_act)
         file_menu.addAction(self.export_act)
         file_menu.addAction(self.export_json_act)
         file_menu.addAction(self.export_shapefile_act)
+        file_menu.addAction(self.import_shapefile_act)
         file_menu.addSeparator()
         edit_menu = self.addMenu("Edit")
         edit_menu.addAction(self.undo_act)

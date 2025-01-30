@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QWidget, QGraphicsView, QGraphicsScene, QVBoxLayout,
 from PyQt6.QtGui import QPixmap, QImage, QColor, QPainter, QColor, QImageReader, QKeyEvent, QCursor, QMouseEvent, QWheelEvent
 from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QEvent, QObject, QBuffer, pyqtBoundSignal, QSize
 
-from components.display_bar import DisplayBar
+from components.display_bar.display_bar import DisplayBar
 
 import qimage2ndarray
 from typing import List, Tuple
@@ -19,9 +19,14 @@ import os
 
 from utils.async_worker import AsyncWorker
 from utils.tool_mode import ToolMode
-from utils.mask import MaskItem
+from utils.polygon import Polygon
 from segment_agent import SegmentAgent
-from utils.mask_manager import MaskManager
+from utils.polygon_manager import PolygonManager
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from main_page import MainPage
 
 
 Image.MAX_IMAGE_PIXELS = None
@@ -30,24 +35,22 @@ Image.MAX_IMAGE_PIXELS = None
 class ImageCanvas(QGraphicsView):
     """Used to display and edit an image"""
 
-    image_loaded: pyqtBoundSignal = pyqtSignal()
-    tab_key_pressed = pyqtSignal()
-    project_saved = pyqtSignal()
-    export_done = pyqtSignal()
-    mask_change = pyqtSignal(MaskItem)
+    image_loaded_event: pyqtBoundSignal = pyqtSignal()
+    tab_key_pressed_event = pyqtSignal()
+    project_saved_event = pyqtSignal()
+    export_done_event = pyqtSignal()
+    mask_change_event = pyqtSignal(Polygon)
 
-    def __init__(self):
+    def __init__(self, parent):
         super().__init__()
 
-        self.display_bar = None
-
+        self.main_page: MainPage = parent
         self.tool_mode = ToolMode.CREATE_MASK
-        self.mask_color = QColor(30, 144, 255, 75)
+        self.polygon_brush_color = QColor(30, 144, 255, 75)
         self.mouse_position_x = "-"
         self.mouse_position_y = "-"
-        self.masks = []
-        self.mask_id = 1
-        self.loaded_mask_ids = []
+        self.unique_polygon_id = 1
+        self.existing_mask_ids = []
         self.viewport_moved = True
         self.setStyleSheet("""ImageCanvas { border: 3px solid rgb(230, 230, 230);}""")
         self.middle_mouse_button_pressed = False
@@ -62,10 +65,6 @@ class ImageCanvas(QGraphicsView):
         self.scene.installEventFilter(self)
         self.setScene(self.scene)
         QImageReader.setAllocationLimit(0)
-        self.widget = QWidget()
-        self.vbox = QVBoxLayout()
-        self.vbox.addWidget(self)
-        self.widget.setLayout(self.vbox)
 
         self.mask_managers = []
         self.current_mask_manager = None
@@ -73,47 +72,30 @@ class ImageCanvas(QGraphicsView):
         self.image_path = None
 
     def load_image(self, file_path: str):
+        """Load the given file asyncronously and display it in the image canvas scene"""
         self.image_path = file_path
 
-        def runnable():
+        def async_load_image():
             image: Image.Image = Image.open(file_path)
             image = self.rotate_image_by_exif_tag(image)
             image = image.convert("RGBA")
             qimage = QImage(image.tobytes("raw", "RGBA"), image.size[0], image.size[1], QImage.Format.Format_RGBA8888)
             return qimage
 
-        self.image_loader_worker = AsyncWorker(runnable)
-        self.image_loader_worker.setCallbackFunction(self.async_worker_done)
+        self.image_loader_worker = AsyncWorker(async_load_image)
+        self.image_loader_worker.setCallbackFunction(self.async_image_loaded_listener)
         self.image_loader_worker.start()
 
-    def load_project(self, project_path: str):
-        self.image_path = None
-
-        def runnable():
-            with open(project_path, "rb") as inp:
-                project = pickle.load(inp)
-            qimage = qimage2ndarray.array2qimage(project[0])
-            polygons: list[dict] = project[1]
-            return qimage, polygons
-
-        self.project_loader_worker = AsyncWorker(runnable)
-        self.project_loader_worker.setCallbackFunction(self.project_loaded)
-        self.project_loader_worker.start()
-
-    def project_loaded(self, project_properties: Tuple[QImage, List[dict[str, QColor, List[Tuple[float, float]]]]]):
-        image_size = project_properties[0].size()
-        self.load_project_polygons(project_properties[1])
-        self.async_worker_done(project_properties[0])
-
-    def async_worker_done(self, image: QImage):
+    def async_image_loaded_listener(self, image: QImage):
         self.image: QImage = image
         self.pixmap = QPixmap.fromImage(image)
         self.image_item = self.scene.addPixmap(self.pixmap)
         self.scene.setSceneRect(self.image_item.boundingRect())
         self.fitInView(self.image_item.boundingRect(), Qt.AspectRatioMode.KeepAspectRatio)
-        self.image_loaded.emit()
+        self.image_loaded_event.emit()
 
     def take_screenshot(self):
+        """Capture the currently displayed image data as a numpy array"""
         area = self.viewport().rect()
         image = QImage(area.size(), QImage.Format.Format_ARGB32_Premultiplied)
         painter = QPainter(image)
@@ -123,15 +105,17 @@ class ImageCanvas(QGraphicsView):
         array = qimage2ndarray.rgb_view(image)
         return array
 
-    def undo_mask(self):
+    def undo_polygon(self, display_bar: DisplayBar):
+        """Update currently selected polygon to its previous state"""
         if self.current_mask_manager == None:
             return
-        self.current_mask_manager.displayPreviousMaskItem(self.display_bar)
+        self.current_mask_manager.displayPreviousMaskItem(display_bar)
 
-    def redo_mask(self):
+    def redo_polygon(self, display_bar: DisplayBar):
+        """Update currently selected polygon to its next state if one exists"""
         if self.current_mask_manager == None:
             return
-        self.current_mask_manager.displayNextMaskItem(self.display_bar)
+        self.current_mask_manager.displayNextMaskItem(display_bar)
 
     def mousePressEvent(self, event: QMouseEvent):
 
@@ -154,12 +138,14 @@ class ImageCanvas(QGraphicsView):
                     point = self.mapToScene(event.pos())
                     items = self.scene.items(point)
                     for item in items:
-                        if isinstance(item, MaskItem):
+                        if isinstance(item, Polygon):
                             if self.current_mask_manager != None:
                                 self.current_mask_manager.unselectCurrentMask()
                             self.current_mask_manager = item.get_mask_manager()
                             item.set_selected(True)
-                            self.display_bar.getRightDrawer().moveToMask(item)
+                            # TODO
+                            self.main_page.display_bar.get_toolbox().move_selected_list_item(item)
+                            # self.display_bar.getRightDrawer().moveToMask(item)
                             return
 
                 # If right-clicking without holding control, do nothing
@@ -184,15 +170,15 @@ class ImageCanvas(QGraphicsView):
                     if self.current_mask_manager is not None:
                         self.current_mask_manager.unselectCurrentMask()
 
-                    mask_name = f"mask{self.mask_id}"
+                    mask_name = f"mask{self.unique_polygon_id}"
 
-                    while mask_name in self.loaded_mask_ids:
-                        self.mask_id += 1
-                        mask_name = f"mask{self.mask_id}"
+                    while mask_name in self.existing_mask_ids:
+                        self.unique_polygon_id += 1
+                        mask_name = f"mask{self.unique_polygon_id}"
 
-                    self.current_mask_manager = MaskManager(mask_name)
+                    self.current_mask_manager = PolygonManager(mask_name)
                     self.current_mask_manager.setGraphicsView(self)
-                    self.mask_id += 1
+                    self.unique_polygon_id += 1
                     self.mask_managers.append(self.current_mask_manager)
                     polarity = 1
 
@@ -201,9 +187,10 @@ class ImageCanvas(QGraphicsView):
 
                 unique_point = [event.pos().x(), event.pos().y(), polarity]
 
-                mask_polygon = MaskItem(self.mask_color, self.current_mask_manager, unique_point)
+                mask_polygon = Polygon(self.polygon_brush_color, self.current_mask_manager, unique_point)
                 mask_polygon.set_name(self.current_mask_manager.getName())
-                display_name = self.display_bar.getAnnotationLabel()
+                # TODO
+                display_name = self.main_page.display_bar.get_annotation_label()
                 if display_name == "":
                     display_name = self.current_mask_manager.getName()
                 mask_polygon.set_display_name(display_name)
@@ -223,10 +210,10 @@ class ImageCanvas(QGraphicsView):
 
                 # Update mask menu
                 if editing_existing_polygon:
-                    self.display_bar.getRightDrawer().displayPolygonImage(mask_polygon)
-                    self.display_bar.getRightDrawer().updateMask(mask_polygon)
+                    self.main_page.display_bar.get_toolbox().draw_polygon_image(mask_polygon)
+                    self.main_page.display_bar.get_toolbox().update_polygon_list(mask_polygon)
                 else:
-                    self.display_bar.getRightDrawer().addMask(mask_polygon)
+                    self.main_page.display_bar.get_toolbox().add_polygon_to_polygon_list(mask_polygon)
 
             elif self.tool_mode == ToolMode.ERASE_MASK:
                 point = self.mapToScene(event.pos())
@@ -234,7 +221,7 @@ class ImageCanvas(QGraphicsView):
                 for item in items:
                     if isinstance(item, QGraphicsPolygonItem):
                         self.scene.removeItem(item)
-                        self.display_bar.getRightDrawer().removeMask(item)
+                        self.main_page.display_bar.get_toolbox().remove_polygon_from_polygon_list(item)
                         return
 
     def is_point_in_canvas(self, point: QPoint) -> bool:
@@ -244,6 +231,7 @@ class ImageCanvas(QGraphicsView):
         return 0 < rel_x < self.pixmap.width() and 0 < rel_y < self.pixmap.height()
 
     def update_current_image(self):
+        """Capture current viewport image data and pass it into SAM model"""
         image_array = self.take_screenshot()
         self.segment_agent.setImage(image_array)
         self.viewport_moved = False
@@ -293,7 +281,7 @@ class ImageCanvas(QGraphicsView):
         else:
             self.mouse_position_y = rel_y
 
-        self.display_bar.getCoordinateDisplayWindow().updateCoordinates(int(self.mouse_position_x), int(self.mouse_position_y))
+        self.main_page.display_bar.get_coordinate_display_widget().update_coordinates(int(self.mouse_position_x), int(self.mouse_position_y))
 
         if self.middle_mouse_button_pressed:
             self.viewport_moved = True
@@ -311,8 +299,8 @@ class ImageCanvas(QGraphicsView):
 
     def eventFilter(self, object: QObject, event: QEvent):
         if isinstance(event, QKeyEvent) and event.key() == Qt.Key.Key_Tab:
-            self.tab_key_pressed.emit()
-            if self.is_point_in_canvas(self.display_bar.getCoordinateDisplayWindow().getCoordinates()):
+            self.tab_key_pressed_event.emit()
+            if self.is_point_in_canvas(self.main_page.display_bar.get_coordinate_display_widget().get_coordinates()):
                 if self.tool_mode == ToolMode.CREATE_MASK:
                     QApplication.setOverrideCursor(Qt.CursorShape.CrossCursor)
                 else:
@@ -321,9 +309,8 @@ class ImageCanvas(QGraphicsView):
         return super().eventFilter(object, event)
 
     def close(self):
-        self.masks.clear()
-        self.loaded_mask_ids.clear()
-        self.mask_id = 1
+        self.existing_mask_ids.clear()
+        self.unique_polygon_id = 1
         self.mask_managers.clear()
         self.scene.clear()
         self.current_mask_manager = None
@@ -334,78 +321,20 @@ class ImageCanvas(QGraphicsView):
     def set_tool_mode(self, tool_mode: ToolMode):
         self.tool_mode = tool_mode
 
-    def set_mask_color(self, mask_color: QColor):
-        self.mask_color = mask_color
+    def set_polygon_brush_color(self, mask_color: QColor):
+        self.polygon_brush_color = mask_color
 
-    def get_mask_color(self):
-        return self.mask_color
+    def get_polygon_brush_color(self):
+        return self.polygon_brush_color
 
     def set_segment_agent(self, segment_agent: SegmentAgent):
         self.segment_agent = segment_agent
 
-    def set_coord_display(self, display_bar: DisplayBar):
-        self.display_bar: DisplayBar = display_bar
-
     def get_scene(self) -> QGraphicsScene:
         return self.scene
 
-    def getAllMaskManagers(self):
+    def get_mask_managers(self):
         return self.mask_managers
-
-    def _convert_polygon_to_binary_mask(self, polygon: list[tuple], image_size: QSize):
-        width = image_size.width()
-        height = image_size.height()
-
-        binary_mask = np.zeros((height, width), dtype=bool)
-
-        for x, y in polygon:
-            x_mapped = x
-            y_mapped = y
-
-            if 0 <= x_mapped < width and 0 <= y_mapped < height:
-                binary_mask[y_mapped, x_mapped] = True
-
-        return binary_mask
-
-    def load_project_polygons(self, polygon_dict: List[dict[str, QColor, List[Tuple[float, float]]]]):
-        for mask in polygon_dict:
-            manager = MaskManager(mask["name"])
-            manager.setGraphicsView(self)
-            point = [mask["points"][0][0], mask["points"][0][1], 1]
-            mask_polygon = MaskItem(mask["mask_color"], manager, point)
-            mask_polygon.set_name(manager.getName())
-            mask_polygon.set_display_name(mask["display_name"])
-            self.loaded_mask_ids.append(manager.getName())
-            manager.appendMaskItem(mask_polygon)
-            manager.displayNextMaskItem()
-            mask_polygon.drawFixed(mask["points"])
-            mask_polygon.setZValue(10)
-            self.mask_managers.append(manager)
-            self.display_bar.getRightDrawer().addMask(mask_polygon)
-
-    def save_project(self, path: str, main_window: QMainWindow):
-        mask_managers = self.getAllMaskManagers()
-        polygons = []
-
-        def runnable():
-            manager: MaskManager
-            for manager in mask_managers:
-                if not manager.hasNothingDisplayed():
-                    polygons.append(manager.displayed_mask.to_dictionary())
-
-            # When saving a project from a project, the r and b values in the image get swapped, so we need to swap them back
-            if self.image_path == None:
-                arr = qimage2ndarray.rgb_view(self.image, "big")
-            else:
-                arr = qimage2ndarray.rgb_view(self.image, "little")
-            project = [arr, polygons]
-            filehandler = open(path, "wb")
-            pickle.dump(project, filehandler, pickle.HIGHEST_PROTOCOL)
-            return main_window
-
-        self.project_saver_worker = AsyncWorker(runnable)
-        self.project_saver_worker.setCallbackFunction(self.project_saved.emit)
-        self.project_saver_worker.start()
 
     def rotate_image_by_exif_tag(self, image: Image.Image):
         try:
@@ -437,7 +366,7 @@ class ImageCanvas(QGraphicsView):
                 if isinstance(item, QGraphicsPolygonItem):
                     polygons.append(item)
 
-            mask: MaskItem
+            mask: Polygon
             for mask in polygons:
                 polygon = mask.polygon()
                 points = [(point.x(), point.y()) for point in polygon]
@@ -452,7 +381,7 @@ class ImageCanvas(QGraphicsView):
             return output_image
 
         self.image_saver_worker = AsyncWorker(runnable)
-        self.image_saver_worker.setCallbackFunction(self.export_done.emit)
+        self.image_saver_worker.setCallbackFunction(self.export_done_event.emit)
         self.image_saver_worker.start()
 
     def export_json(self, file_path: str):
@@ -475,10 +404,10 @@ class ImageCanvas(QGraphicsView):
 
         data["annotations"] = []
 
-        mask_manager: MaskManager
+        mask_manager: PolygonManager
         for mask_manager in self.mask_managers:
 
-            maskItem: MaskItem = mask_manager.getCurrentlyDisplayedMask()
+            maskItem: Polygon = mask_manager.getCurrentlyDisplayedMask()
 
             if maskItem.mask_array is None:
                 continue
@@ -511,7 +440,6 @@ class ImageCanvas(QGraphicsView):
                 for item in self.scene.items():
                     if isinstance(item, QGraphicsPolygonItem):
                         label = item.get_display_name()
-                        print(label)
 
                         polygon = item.polygon()
                         points = [(point.x(), point.y()) for point in polygon]
@@ -531,7 +459,6 @@ class ImageCanvas(QGraphicsView):
                 for item in self.scene.items():
                     if isinstance(item, QGraphicsPolygonItem):
                         label = item.get_display_name()
-                        print(label)
 
                         polygon = item.polygon()
                         points = [(point.x(), -point.y()) for point in polygon]
@@ -551,7 +478,6 @@ class ImageCanvas(QGraphicsView):
             for item in self.scene.items():
                 if isinstance(item, QGraphicsPolygonItem):
                     label = item.get_display_name()
-                    print(label)
 
                     polygon = item.polygon()
                     points = [(point.x(), -point.y()) for point in polygon]
@@ -564,3 +490,63 @@ class ImageCanvas(QGraphicsView):
             gdf = gpd.GeoDataFrame({"label": labels, "geometry": polygons})
             # gdf.set_crs(epsg=6346, inplace=True)
             gdf.to_file(file_path)
+
+    # def load_project(self, project_path: str):
+    #    self.image_path = None
+
+    #    def runnable():
+    #        with open(project_path, "rb") as inp:
+    #            project = pickle.load(inp)
+    #        qimage = qimage2ndarray.array2qimage(project[0])
+    #        polygons: list[dict] = project[1]
+    #        return qimage, polygons
+
+    #    self.project_loader_worker = AsyncWorker(runnable)
+    #    self.project_loader_worker.setCallbackFunction(self.project_loaded)
+    #    self.project_loader_worker.start()
+
+    # def project_loaded(self, project_properties: Tuple[QImage, List[dict[str, QColor, List[Tuple[float, float]]]]]):
+    #    image_size = project_properties[0].size()
+    #    self.load_project_polygons(project_properties[1])
+    #    self.async_worker_done(project_properties[0])
+
+
+# def load_project_polygons(self, polygon_dict: List[dict[str, QColor, List[Tuple[float, float]]]]):
+#    for mask in polygon_dict:
+#        manager = MaskManager(mask["name"])
+#        manager.setGraphicsView(self)
+#        point = [mask["points"][0][0], mask["points"][0][1], 1]
+#        mask_polygon = MaskItem(mask["mask_color"], manager, point)
+#        mask_polygon.set_name(manager.getName())
+#        mask_polygon.set_display_name(mask["display_name"])
+#        self.loaded_mask_ids.append(manager.getName())
+#        manager.appendMaskItem(mask_polygon)
+#        manager.displayNextMaskItem()
+#        mask_polygon.drawFixed(mask["points"])
+#        mask_polygon.setZValue(10)
+#        self.mask_managers.append(manager)
+#        self.display_bar.getRightDrawer().addMask(mask_polygon)
+
+# def save_project(self, path: str, main_window: QMainWindow):
+#    mask_managers = self.getAllMaskManagers()
+#    polygons = []
+
+#    def runnable():
+#        manager: MaskManager
+#        for manager in mask_managers:
+#            if not manager.hasNothingDisplayed():
+#                polygons.append(manager.displayed_mask.to_dictionary())
+
+# When saving a project from a project, the r and b values in the image get swapped, so we need to swap them back
+#        if self.image_path == None:
+#            arr = qimage2ndarray.rgb_view(self.image, "big")
+#        else:
+#            arr = qimage2ndarray.rgb_view(self.image, "little")
+#        project = [arr, polygons]
+#        filehandler = open(path, "wb")
+#        pickle.dump(project, filehandler, pickle.HIGHEST_PROTOCOL)
+#        return main_window
+
+#    self.project_saver_worker = AsyncWorker(runnable)
+#    self.project_saver_worker.setCallbackFunction(self.project_saved_event.emit)
+#    self.project_saver_worker.start()

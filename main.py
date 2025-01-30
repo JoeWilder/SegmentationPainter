@@ -3,6 +3,10 @@ from PyQt6.QtWidgets import QApplication
 
 from main_page import MainPage
 
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
 if __name__ == "__main__":
     app = QApplication([])
     window = MainPage()
