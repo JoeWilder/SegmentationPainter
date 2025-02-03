@@ -27,11 +27,17 @@ class CheckpointDownloader(QObject):
 
     def download_sam_checkpoints(self):
         def runnable():
+            # Ensure the "sam_checkpoints" directory exists
+            os.makedirs("sam_checkpoints", exist_ok=True)
+
             for url in self._download_urls:
                 file_name = url.split("/")[-1]
-                if not os.path.exists(os.path.join("sam_checkpoints", file_name)):
+                file_path = os.path.join("sam_checkpoints", file_name)
+
+                if not os.path.exists(file_path):
                     r = requests.get(url, allow_redirects=True)
-                    open(f"sam_checkpoints/{file_name}", "wb").write(r.content)
+                    with open(file_path, "wb") as f:
+                        f.write(r.content)
 
         self._downloader_worker = AsyncWorker(runnable)
         self._downloader_worker.job_done.connect(self.checkpoints_downloaded.emit)
