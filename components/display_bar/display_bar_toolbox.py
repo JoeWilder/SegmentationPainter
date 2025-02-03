@@ -50,6 +50,18 @@ class DisplayBarToolbox(QWidget):
         self.current_polygon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.current_polygon_label)
 
+        self.current_group_id_label = QLabel("Current Group ID: None")
+        self.current_group_id_label.setObjectName("CurrentGroupID")
+        self.current_group_id_label.setStyleSheet(
+            """
+            #CurrentGroupID {
+                color: gray;
+            }
+            """
+        )
+        self.current_group_id_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.current_group_id_label)
+
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setMaximumWidth(200)
@@ -108,6 +120,37 @@ class DisplayBarToolbox(QWidget):
 
         text_layout.addWidget(self.annotation_dropdown)
 
+
+
+        self.group_dropdown_label = QLabel("Group ID")
+        self.group_dropdown_label.setMaximumWidth(300)
+        self.group_dropdown_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.group_dropdown_label.setObjectName("GroupID")
+        self.group_dropdown_label.setStyleSheet(
+            """
+            #GroupID {
+                margin-top: 20px;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            """
+        )
+
+        text_layout.addWidget(self.group_dropdown_label)
+
+        self.group_dropdown = QComboBox()
+        self.group_dropdown.setEditable(True)
+        self.group_dropdown.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
+        #self.group_dropdown.lineEdit().setReadOnly(True)
+
+        self.group_dropdown.addItem("None")  # Default option
+        self.group_dropdown.setCurrentText("None")  # Ensure it's selected by default
+
+        self.group_dropdown.lineEdit().editingFinished.connect(self.add_new_group)
+
+
+        text_layout.addWidget(self.group_dropdown)
+
         layout.addLayout(text_layout)
 
         self.model_strength_label = QLabel("Model Strength")
@@ -128,7 +171,10 @@ class DisplayBarToolbox(QWidget):
         self.strength_slider.setMinimum(0)
         self.strength_slider.setMaximum(3)
         self.strength_slider.setTickInterval(1)
-        self.strength_slider.setTracking(False)
+        self.strength_slider.setSingleStep(1)  # Ensure step-by-step movement
+        self.strength_slider.setPageStep(1)  # Snap when clicking on the track
+        self.strength_slider.setTracking(False)  # Only change on release
+
         self.strength_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.strength_slider.valueChanged.connect(self._strength_slider_changed_listener)
 
@@ -184,6 +230,14 @@ class DisplayBarToolbox(QWidget):
         self.strength_slider_change_event.emit(action)
         self.current_strength_label.setText(self.get_text_from_slider_index(index))
 
+    def add_new_group(self):
+        new_group = self.group_dropdown.currentText().strip()
+        
+        if new_group and new_group != "None" and new_group not in [self.group_dropdown.itemText(i) for i in range(self.group_dropdown.count())]:
+            self.group_dropdown.addItem(new_group)  # Add to dropdown
+            self.group_dropdown.setCurrentText(new_group)
+            self.current_group_id_label.setText(new_group)
+
     def get_text_from_slider_index(self, index):
         return self.strength_slider_labels[index]
 
@@ -208,6 +262,7 @@ class DisplayBarToolbox(QWidget):
         self.polygon_list.addItem(item)
         self.polygon_list.setItemWidget(item, widget)
         self.polygon_list.setCurrentItem(item)
+        self.current_group_id_label.setText(f"Current Group ID: {mask.group_id}")
 
     def update_polygon_list(self, mask):
         self.draw_polygon_image(mask)
@@ -216,6 +271,7 @@ class DisplayBarToolbox(QWidget):
             return
         item = items[0]
         self.polygon_list.setItemWidget(item, PolygonItemWidget(mask))
+        self.current_group_id_label.setText(f"Current Group ID: {mask.group_id}")
 
     def remove_polygon_from_polygon_list(self, mask: Polygon):
         for index in range(self.polygon_list.count()):
@@ -225,6 +281,7 @@ class DisplayBarToolbox(QWidget):
                 self.polygon_list.takeItem(index)
                 self.clear_polygon_image()
                 return
+        self.current_group_id_label.setText("Current Group ID: None")
 
     def draw_polygon_image(self, polygon_item: Polygon):
         pixmap_size = 100
@@ -265,4 +322,7 @@ class DisplayBarToolbox(QWidget):
             widget: PolygonItemWidget = self.polygon_list.itemWidget(item)
             if mask.get_name() == widget.polygon_item.get_name():
                 self.polygon_list.setCurrentItem(item)
+                listWidget: PolygonItemWidget = self.polygon_list.itemWidget(item)
+                mask = listWidget.polygon_item
+                self.current_group_id_label.setText(f"Current Group ID: {mask.group_id}")
                 return

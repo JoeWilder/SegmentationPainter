@@ -8,7 +8,7 @@ import numpy as np
 class Polygon(QGraphicsPolygonItem):
     """Used to represent a mask polygon"""
 
-    def __init__(self, mask_color, manager=None, unique_point=None):
+    def __init__(self, mask_color, manager=None, unique_point=None, unique_id=None, group_id=None):
         super().__init__()
         self.mask_color: QColor = mask_color
         self.next: Polygon = None
@@ -18,6 +18,8 @@ class Polygon(QGraphicsPolygonItem):
         self.manager = manager
         self.unique_point = unique_point
         self.mask_array = None
+        self.id = unique_id
+        self.group_id = group_id
 
     def draw(self, graphics_view: QGraphicsView, mask_array: np.ndarray, map=True):
         self.mask_array = mask_array

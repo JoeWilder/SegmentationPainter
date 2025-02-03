@@ -74,6 +74,7 @@ class MainPage(QMainWindow):
         menu_bar.export_image_event.connect(self.export_image)
         menu_bar.export_json_event.connect(self.export_json)
         menu_bar.export_shapefile_event.connect(self.export_shapefile)
+        menu_bar.import_shapefile_event.connect(self.import_shapefile)
         menu_bar.undo_clicked_event.connect(self._undo_clicked_listener)
         menu_bar.redo_clicked_event.connect(self._redo_clicked_listener)
         menu_bar.color_masks_by_type_event.connect(self._change_polygon_colors_listener)
@@ -193,6 +194,12 @@ class MainPage(QMainWindow):
         if path == "":
             return
         self.image_canvas.export_shapefile(path)
+
+    def import_shapefile(self):
+        path = utils.import_shapefile_path()
+        if path == "":
+            return
+        self.image_canvas.import_shapefile(path)
 
     def _export_image_finished_listener(self):
         """Callback that is fired when an export is finished"""

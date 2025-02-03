@@ -11,11 +11,12 @@ from PIL import Image, ImageDraw, ExifTags
 import io
 import json
 from datetime import datetime
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon as ShapelyPolygon
 import geopandas as gpd
 import rasterio
 import numpy as np
 import os
+import pandas as pd
 
 from utils.async_worker import AsyncWorker
 from utils.tool_mode import ToolMode
@@ -187,9 +188,10 @@ class ImageCanvas(QGraphicsView):
 
                 unique_point = [event.pos().x(), event.pos().y(), polarity]
 
-                mask_polygon = Polygon(self.polygon_brush_color, self.current_mask_manager, unique_point)
+                mask_polygon = Polygon(self.polygon_brush_color, self.current_mask_manager, unique_point, self.unique_polygon_id, self.main_page.display_bar.display_bar_toolbox.group_dropdown.currentText())
+
+                #print(self.main_page.display_bar.display_bar_toolbox.group_dropdown.currentText())
                 mask_polygon.set_name(self.current_mask_manager.getName())
-                # TODO
                 display_name = self.main_page.display_bar.get_annotation_label()
                 if display_name == "":
                     display_name = self.current_mask_manager.getName()
@@ -420,76 +422,83 @@ class ImageCanvas(QGraphicsView):
             json.dump(data, f)
 
     def export_shapefile(self, file_path: str):
+        extension = os.path.splitext(self.image_path)[-1] if self.image_path else ".tif"
 
-        if self.image_path is None:
-            extension = ".tif"
-        else:
-            extension = os.path.splitext(self.image_path)[-1]
+        if extension in [".tif", ".tiff"]:
+            with rasterio.open(self.image_path) as src:
+                transform = src.transform
+                crs = src.crs
 
-        # TODO added a hotfix for exporting shapefiles from loaded sgmt project files. Currently, loaded sgmt project files
-        # do not have the image path, so the extension can not be determined. If we are on a sgmt file, just try both
-        # for now (not ideal, but works for now)
-        try:
-            if extension in [".tif", ".tiff"]:
-                with rasterio.open(self.image_path) as src:
-                    transform = src.transform
-                    crs = src.crs
+            rows = []  # List to store rows for GeoDataFrame
 
-                polygons = []
-                labels = []
-                for item in self.scene.items():
-                    if isinstance(item, QGraphicsPolygonItem):
-                        label = item.get_display_name()
-
-                        polygon = item.polygon()
-                        points = [(point.x(), point.y()) for point in polygon]
-
-                        if len(points) >= 3:
-                            transformed_points = [transform * (x, y) for x, y in points]
-                            poly = Polygon(transformed_points)
-                            polygons.append(poly)
-                            labels.append(label)
-
-                gdf = gpd.GeoDataFrame({"label": labels, "geometry": polygons})
-                gdf.set_crs(crs, inplace=True)
-                gdf.to_file(file_path)
-            else:
-                polygons = []
-                labels = []
-                for item in self.scene.items():
-                    if isinstance(item, QGraphicsPolygonItem):
-                        label = item.get_display_name()
-
-                        polygon = item.polygon()
-                        points = [(point.x(), -point.y()) for point in polygon]
-
-                        if len(points) >= 3:
-                            poly = Polygon(points)
-                            polygons.append(poly)
-                            labels.append(label)
-
-                gdf = gpd.GeoDataFrame({"label": labels, "geometry": polygons})
-                # gdf.set_crs(epsg=6346, inplace=True)
-                gdf.to_file(file_path)
-        except Exception as e:
-            print(f"Error occurred: {e}")
-            polygons = []
-            labels = []
             for item in self.scene.items():
                 if isinstance(item, QGraphicsPolygonItem):
                     label = item.get_display_name()
+                    polygon_id = item.id
+                    group_id = item.group_id
 
                     polygon = item.polygon()
-                    points = [(point.x(), -point.y()) for point in polygon]
+                    points = [(point.x(), point.y()) for point in polygon]
 
                     if len(points) >= 3:
-                        poly = Polygon(points)
-                        polygons.append(poly)
-                        labels.append(label)
+                        # Transform points if needed (for .tif or .tiff files)
+                        transformed_points = [transform * (x, y) for x, y in points]
+                        # Convert to Shapely Polygon
+                        poly = ShapelyPolygon(transformed_points)
 
-            gdf = gpd.GeoDataFrame({"label": labels, "geometry": polygons})
-            # gdf.set_crs(epsg=6346, inplace=True)
+                        # Append row with geometry and other attributes
+                        rows.append({
+                            "polygon_id": polygon_id,
+                            "group_id": group_id,
+                            "label": label,
+                            "geometry": poly
+                        })
+
+            # Create GeoDataFrame from rows
+            gdf = gpd.GeoDataFrame(rows, columns=["polygon_id", "group_id", "label", "geometry"], crs=crs)
+
+            # Explicitly set the geometry column
+            gdf.set_geometry("geometry", inplace=True)
+
+            # Save to shapefile
             gdf.to_file(file_path)
+
+        else:
+            rows = []  # List to store rows for GeoDataFrame
+
+            for item in self.scene.items():
+                if isinstance(item, QGraphicsPolygonItem):
+                    label = item.get_display_name()
+                    polygon_id = item.id
+                    group_id = item.group_id
+
+                    polygon = item.polygon()
+                    points = [(point.x(), -point.y()) for point in polygon]  # Flip Y for non-tif
+
+                    if len(points) >= 3:
+                        # Convert to Shapely Polygon
+                        poly = ShapelyPolygon(points)
+
+                        # Append row with geometry and other attributes
+                        rows.append({
+                            "polygon_id": polygon_id,
+                            "group_id": group_id,
+                            "label": label,
+                            "geometry": poly
+                        })
+
+            # Create GeoDataFrame from rows
+            gdf = gpd.GeoDataFrame(rows, columns=["polygon_id", "group_id", "label", "geometry"])
+
+            # Explicitly set the geometry column
+            gdf.set_geometry("geometry", inplace=True)
+
+            # Save to shapefile
+            gdf.to_file(file_path)
+
+    def import_shapefile(self, file_path: str):
+        pass
+
 
     # def load_project(self, project_path: str):
     #    self.image_path = None

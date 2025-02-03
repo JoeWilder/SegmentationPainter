@@ -37,3 +37,7 @@ def save_project_path():
 def save_shapefile_path():
     path, _ = QFileDialog.getSaveFileName(None, "Save shapefile", "annotated-shapes.shp", "Shape (*.shp)")
     return path
+
+def import_shapefile_path():
+    path, _ = QFileDialog.getOpenFileName(None, "Choose shapefile", "annotated-shapes.shp", "Shape (*.shp)")
+    return path
