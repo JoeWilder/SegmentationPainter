@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QGraphicsView, QGraphicsScene, QVBoxLayout, QGraphicsPolygonItem, QApplication, QMainWindow
-from PyQt6.QtGui import QPixmap, QImage, QColor, QPainter, QColor, QImageReader, QKeyEvent, QCursor, QMouseEvent, QWheelEvent
-from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QEvent, QObject, QBuffer, pyqtBoundSignal, QSize
+from PyQt6.QtGui import QPixmap, QImage, QColor, QPainter, QColor, QImageReader, QKeyEvent, QCursor, QMouseEvent, QWheelEvent, QPolygonF
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QEvent, QObject, QBuffer, pyqtBoundSignal, QSize, QPointF
 
 from components.display_bar.display_bar import DisplayBar
 
@@ -144,7 +144,7 @@ class ImageCanvas(QGraphicsView):
                                 self.current_mask_manager.unselectCurrentMask()
                             self.current_mask_manager = item.get_mask_manager()
                             item.set_selected(True)
-                            # TODO
+
                             self.main_page.display_bar.get_toolbox().move_selected_list_item(item)
                             # self.display_bar.getRightDrawer().moveToMask(item)
                             return
@@ -186,11 +186,14 @@ class ImageCanvas(QGraphicsView):
                 if self.viewport_moved:
                     self.update_current_image()
 
-                unique_point = [event.pos().x(), event.pos().y(), polarity]
+                mapped_unique_point = event.pos()
 
-                mask_polygon = Polygon(self.polygon_brush_color, self.current_mask_manager, unique_point, self.unique_polygon_id, self.main_page.display_bar.display_bar_toolbox.group_dropdown.currentText())
+                unique_point = [round(mapped_unique_point.x()), round(mapped_unique_point.y()), polarity]
 
-                #print(self.main_page.display_bar.display_bar_toolbox.group_dropdown.currentText())
+                mask_polygon = Polygon(
+                    self.polygon_brush_color, self.current_mask_manager, unique_point, self.unique_polygon_id, self.main_page.display_bar.display_bar_toolbox.group_dropdown.currentText()
+                )
+
                 mask_polygon.set_name(self.current_mask_manager.getName())
                 display_name = self.main_page.display_bar.get_annotation_label()
                 if display_name == "":
@@ -422,140 +425,110 @@ class ImageCanvas(QGraphicsView):
             json.dump(data, f)
 
     def export_shapefile(self, file_path: str):
-        extension = os.path.splitext(self.image_path)[-1] if self.image_path else ".tif"
+        extension = os.path.splitext(self.image_path)[-1]
 
-        if extension in [".tif", ".tiff"]:
+        transform, crs = None, None
+        if extension in [".tif", ".tiff"] and self.image_path:
             with rasterio.open(self.image_path) as src:
-                transform = src.transform
-                crs = src.crs
+                transform, crs = src.transform, src.crs
 
-            rows = []  # List to store rows for GeoDataFrame
+        rows = []  # List to store rows for GeoDataFrame
 
-            for item in self.scene.items():
-                if isinstance(item, QGraphicsPolygonItem):
-                    label = item.get_display_name()
-                    polygon_id = item.id
-                    group_id = item.group_id
+        for item in self.scene.items():
+            if isinstance(item, QGraphicsPolygonItem):
+                label = item.get_display_name()
+                polygon_id = item.id
+                group_id = item.group_id
+                color = item.mask_color
+                r, g, b, a = color.red(), color.green(), color.blue(), color.alpha()
 
-                    polygon = item.polygon()
-                    points = [(point.x(), point.y()) for point in polygon]
+                polygon = item.polygon()
+                points = [(point.x(), point.y()) for point in polygon]
 
-                    if len(points) >= 3:
-                        # Transform points if needed (for .tif or .tiff files)
-                        transformed_points = [transform * (x, y) for x, y in points]
-                        # Convert to Shapely Polygon
-                        poly = ShapelyPolygon(transformed_points)
+                if len(points) < 3:
+                    continue
 
-                        # Append row with geometry and other attributes
-                        rows.append({
-                            "polygon_id": polygon_id,
-                            "group_id": group_id,
-                            "label": label,
-                            "geometry": poly
-                        })
+                print(item.manager.clicked_points)
 
-            # Create GeoDataFrame from rows
-            gdf = gpd.GeoDataFrame(rows, columns=["polygon_id", "group_id", "label", "geometry"], crs=crs)
+                # If using a raster file, apply transformation; otherwise, flip Y
+                transformed_points = [transform * (x, y) for x, y in points] if transform else [(x, -y) for x, y in points]
 
-            # Explicitly set the geometry column
-            gdf.set_geometry("geometry", inplace=True)
+                # Convert to Shapely Polygon
+                poly = ShapelyPolygon(transformed_points)
 
-            # Save to shapefile
-            gdf.to_file(file_path)
+                # Append row with geometry and attributes
+                rows.append(
+                    {
+                        "polygon_id": polygon_id,
+                        "group_id": group_id,
+                        "label": label,
+                        "geometry": poly,
+                        "seed_pnt_x": item.unique_point[0],
+                        "seed_pnt_y": item.unique_point[1],
+                        "red": r,
+                        "green": g,
+                        "blue": b,
+                        "alpha": a,
+                    }
+                )
 
-        else:
-            rows = []  # List to store rows for GeoDataFrame
+        # Create GeoDataFrame
+        gdf = gpd.GeoDataFrame(rows, columns=["polygon_id", "group_id", "label", "geometry", "seed_pnt_x", "seed_pnt_y", "red", "green", "blue", "alpha"], crs=crs if crs else None)
 
-            for item in self.scene.items():
-                if isinstance(item, QGraphicsPolygonItem):
-                    label = item.get_display_name()
-                    polygon_id = item.id
-                    group_id = item.group_id
-
-                    polygon = item.polygon()
-                    points = [(point.x(), -point.y()) for point in polygon]  # Flip Y for non-tif
-
-                    if len(points) >= 3:
-                        # Convert to Shapely Polygon
-                        poly = ShapelyPolygon(points)
-
-                        # Append row with geometry and other attributes
-                        rows.append({
-                            "polygon_id": polygon_id,
-                            "group_id": group_id,
-                            "label": label,
-                            "geometry": poly
-                        })
-
-            # Create GeoDataFrame from rows
-            gdf = gpd.GeoDataFrame(rows, columns=["polygon_id", "group_id", "label", "geometry"])
-
-            # Explicitly set the geometry column
-            gdf.set_geometry("geometry", inplace=True)
-
-            # Save to shapefile
-            gdf.to_file(file_path)
+        # Save to shapefile
+        gdf.to_file(file_path)
 
     def import_shapefile(self, file_path: str):
-        pass
+        try:
+            # Load the shapefile
+            gdf = gpd.read_file(file_path)
 
+            # Ensure it has the necessary columns
+            required_columns = {"polygon_id", "group_id", "label", "geometry", "seed_pnt_x", "seed_pnt_y", "red", "green", "blue", "alpha"}
+            if not required_columns.issubset(gdf.columns):
+                raise ValueError(f"Shapefile is missing required columns: {required_columns - set(gdf.columns)}")
 
-    # def load_project(self, project_path: str):
-    #    self.image_path = None
+            transform = None
+            if os.path.splitext(self.image_path)[-1] in [".tif", ".tiff"]:
+                with rasterio.open(self.image_path) as src:
+                    transform = ~src.transform  # Invert transform to map back to image coordinates
 
-    #    def runnable():
-    #        with open(project_path, "rb") as inp:
-    #            project = pickle.load(inp)
-    #        qimage = qimage2ndarray.array2qimage(project[0])
-    #        polygons: list[dict] = project[1]
-    #        return qimage, polygons
+            i = 1
 
-    #    self.project_loader_worker = AsyncWorker(runnable)
-    #    self.project_loader_worker.setCallbackFunction(self.project_loaded)
-    #    self.project_loader_worker.start()
+            # Iterate over polygons and add them to the scene
+            for _, row in reversed(list(gdf.iterrows())):
+                polygon_id = row["polygon_id"]
+                group_id = row["group_id"]
+                label = row["label"]
+                geometry = row["geometry"]
+                unique_point_x = row["seed_pnt_x"]
+                unique_point_y = row["seed_pnt_y"]
+                r, g, b, a = row["red"], row["green"], row["blue"], row["alpha"]
 
-    # def project_loaded(self, project_properties: Tuple[QImage, List[dict[str, QColor, List[Tuple[float, float]]]]]):
-    #    image_size = project_properties[0].size()
-    #    self.load_project_polygons(project_properties[1])
-    #    self.async_worker_done(project_properties[0])
+                manager = PolygonManager(f"polygon")
+                manager.setGraphicsView(self)
 
+                if transform:
+                    points = [transform * (x, y) for x, y in geometry.exterior.coords]
+                else:
+                    points = [(x, -y) for x, y in geometry.exterior.coords]
 
-# def load_project_polygons(self, polygon_dict: List[dict[str, QColor, List[Tuple[float, float]]]]):
-#    for mask in polygon_dict:
-#        manager = MaskManager(mask["name"])
-#        manager.setGraphicsView(self)
-#        point = [mask["points"][0][0], mask["points"][0][1], 1]
-#        mask_polygon = MaskItem(mask["mask_color"], manager, point)
-#        mask_polygon.set_name(manager.getName())
-#        mask_polygon.set_display_name(mask["display_name"])
-#        self.loaded_mask_ids.append(manager.getName())
-#        manager.appendMaskItem(mask_polygon)
-#        manager.displayNextMaskItem()
-#        mask_polygon.drawFixed(mask["points"])
-#        mask_polygon.setZValue(10)
-#        self.mask_managers.append(manager)
-#        self.display_bar.getRightDrawer().addMask(mask_polygon)
+                first_point = [unique_point_x, unique_point_y, 1]
+                polygon_color = QColor(r, g, b, a)
+                mask_polygon = Polygon(polygon_color, manager, first_point)
+                mask_polygon.set_name(manager.getName())
+                mask_polygon.set_display_name(label)
+                mask_polygon.id = polygon_id
+                mask_polygon.group_id = group_id
+                self.existing_mask_ids.append(manager.getName())
+                manager.appendMaskItem(mask_polygon)
+                manager.displayNextMaskItem()
+                mask_polygon.drawFixed(points)
+                mask_polygon.setZValue(10)
+                self.mask_managers.append(manager)
+                self.main_page.display_bar.display_bar_toolbox.add_polygon_to_polygon_list(mask_polygon)
 
-# def save_project(self, path: str, main_window: QMainWindow):
-#    mask_managers = self.getAllMaskManagers()
-#    polygons = []
+            print(f"Successfully imported {len(gdf)} polygons from {file_path}")
 
-#    def runnable():
-#        manager: MaskManager
-#        for manager in mask_managers:
-#            if not manager.hasNothingDisplayed():
-#                polygons.append(manager.displayed_mask.to_dictionary())
-
-# When saving a project from a project, the r and b values in the image get swapped, so we need to swap them back
-#        if self.image_path == None:
-#            arr = qimage2ndarray.rgb_view(self.image, "big")
-#        else:
-#            arr = qimage2ndarray.rgb_view(self.image, "little")
-#        project = [arr, polygons]
-#        filehandler = open(path, "wb")
-#        pickle.dump(project, filehandler, pickle.HIGHEST_PROTOCOL)
-#        return main_window
-
-#    self.project_saver_worker = AsyncWorker(runnable)
-#    self.project_saver_worker.setCallbackFunction(self.project_saved_event.emit)
-#    self.project_saver_worker.start()
+        except Exception as e:
+            print(f"Error importing shapefile: {e}")

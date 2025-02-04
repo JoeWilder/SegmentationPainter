@@ -293,26 +293,3 @@ class MainPage(QMainWindow):
 
     def _update_sam_strength_listener(self, mask_level):
         self.segment_agent.set_mask_level(mask_level)
-
-        # def save_project(self):
-
-    #    """Save the image and its masks into a .sgmt file"""
-    #    path = utils.save_project_path()
-    #    if path == "":
-    #        return
-    #    self.show_loading_modal("Saving Project")
-    #    self.image_canvas.save_project(path, self)
-    #    self.image_canvas.project_saved.connect(self._project_finished_saving)
-
-    # def _project_finished_saving(self):
-    #    """Callback that is fired when a project finishes saving"""
-    #    self.menu_bar.setEnabled(True)
-    #    self.tool_bar.setEnabled(True)
-    #    self.loading_modal.stop()
-
-    # def load_project(self):
-    #    """Load a .sgmt file"""
-    #    project_path = utils.get_project_path()
-    #    if project_path == "":
-    #        return
-    #    self._image_chosen_listener(project_path)
