@@ -77,13 +77,14 @@ class DisplayBarToolbox(QWidget):
         text_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         text_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.annotation_dropdown_label = QLabel("Annotation Label")
+        self.annotation_dropdown_label = QLabel("Polygon Label")
+        self.annotation_dropdown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.annotation_dropdown_label.setMaximumWidth(300)
         self.annotation_dropdown_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.annotation_dropdown_label.setObjectName("AnnotationLabel")
+        self.annotation_dropdown_label.setObjectName("PolygonLabel")
         self.annotation_dropdown_label.setStyleSheet(
             """
-            #AnnotationLabel {
+            #PolygonLabel {
                 margin-top: 20px;
                 font-size: 16px;
                 font-weight: bold;
@@ -104,14 +105,14 @@ class DisplayBarToolbox(QWidget):
         else:
             self.annotation_dropdown.addItem("coral")
 
-        self.annotation_dropdown.setObjectName("myLabel3")
+        self.annotation_dropdown.setObjectName("AnnotationDropdown")
         self.annotation_dropdown.setStyleSheet(
             """
-            #myLabel3 {
+            #AnnotationDropdown {
                 font-size: 16px;
                 font-weight: bold;
             }
-        """
+            """
         )
 
         self.annotation_dropdown.setEditable(True)
@@ -120,9 +121,30 @@ class DisplayBarToolbox(QWidget):
 
         text_layout.addWidget(self.annotation_dropdown)
 
+        self.labels_edit_button = QPushButton("Edit Labels")
+        # self.labels_edit_button.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.labels_edit_button.setMaximumWidth(300)
+        self.labels_edit_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.labels_edit_button.setObjectName("LabelsEditLabel")
+        self.labels_edit_button.setStyleSheet(
+            """
+            #LabelsEditLabel {
+                color: gray;
+                border: 2px solid #007BFF;
+                border-radius: 15px;
+                padding: 5px 10px;
+            }
 
+            #LabelsEditLabel:hover {
+                background-color: #fafafa;
+            }
+            """
+        )
+        self.labels_edit_button.clicked.connect(self.edit_labels)
+        text_layout.addWidget(self.labels_edit_button)
 
         self.group_dropdown_label = QLabel("Group ID")
+        self.group_dropdown_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.group_dropdown_label.setMaximumWidth(300)
         self.group_dropdown_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.group_dropdown_label.setObjectName("GroupID")
@@ -141,13 +163,21 @@ class DisplayBarToolbox(QWidget):
         self.group_dropdown = QComboBox()
         self.group_dropdown.setEditable(True)
         self.group_dropdown.lineEdit().setAlignment(Qt.AlignmentFlag.AlignCenter)
-        #self.group_dropdown.lineEdit().setReadOnly(True)
 
-        self.group_dropdown.addItem("None")  # Default option
-        self.group_dropdown.setCurrentText("None")  # Ensure it's selected by default
+        self.group_dropdown.addItem("None")
+        self.group_dropdown.setCurrentText("None")
 
         self.group_dropdown.lineEdit().editingFinished.connect(self.add_new_group)
 
+        self.group_dropdown.setObjectName("GroupDropdown")
+        self.group_dropdown.setStyleSheet(
+            """
+            #GroupDropdown {
+                font-size: 16px;
+                font-weight: bold;
+            }
+            """
+        )
 
         text_layout.addWidget(self.group_dropdown)
 
@@ -220,7 +250,7 @@ class DisplayBarToolbox(QWidget):
             QPushButton:hover {
                 background-color: #fafafa;
             }
-                             """
+            """
         )
 
     def _strength_slider_changed_listener(self, index):
@@ -230,9 +260,22 @@ class DisplayBarToolbox(QWidget):
         self.strength_slider_change_event.emit(action)
         self.current_strength_label.setText(self.get_text_from_slider_index(index))
 
+    def edit_labels(self):
+        os.system(f"notepad {os.getcwd()}/labels.txt")
+
+        self.annotation_dropdown.clear()
+        if os.path.exists("./labels.txt"):
+            with open("./labels.txt", "r") as f:
+                lines = f.readlines()
+                lines = [line.strip() for line in lines]
+                lines.sort()
+                self.annotation_dropdown.addItems(lines)
+        else:
+            self.annotation_dropdown.addItem("coral")
+
     def add_new_group(self):
         new_group = self.group_dropdown.currentText().strip()
-        
+
         if new_group and new_group != "None" and new_group not in [self.group_dropdown.itemText(i) for i in range(self.group_dropdown.count())]:
             self.group_dropdown.addItem(new_group)  # Add to dropdown
             self.group_dropdown.setCurrentText(new_group)
@@ -320,7 +363,8 @@ class DisplayBarToolbox(QWidget):
         for index in range(self.polygon_list.count()):
             item = self.polygon_list.item(index)
             widget: PolygonItemWidget = self.polygon_list.itemWidget(item)
-            if mask.get_name() == widget.polygon_item.get_name():
+
+            if mask.id == widget.polygon_item.id:
                 self.polygon_list.setCurrentItem(item)
                 listWidget: PolygonItemWidget = self.polygon_list.itemWidget(item)
                 mask = listWidget.polygon_item

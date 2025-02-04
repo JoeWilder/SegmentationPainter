@@ -23,10 +23,7 @@ class Polygon(QGraphicsPolygonItem):
 
     def draw(self, graphics_view: QGraphicsView, mask_array: np.ndarray, map=True):
         self.mask_array = mask_array
-        # np.save("DEBUG1.npy", self.mask_array)
         contours, _ = cv2.findContours(mask_array.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        num_true_values = np.sum(mask_array)
-        # print(f"true vals: {num_true_values}")
 
         if contours:
             largest_contour = max(contours, key=cv2.contourArea)
@@ -36,11 +33,9 @@ class Polygon(QGraphicsPolygonItem):
                 x, y = point[0]
                 if map:
                     scene_point = graphics_view.mapToScene(x, y)
-                    # print(f"Original: ({x}, {y}), Scene: {scene_point}")
                     polygon.append(scene_point)
                 else:
                     qpoint = QPointF(x, y)
-                    # print(f"Original: ({x}, {y}), QPointF: {qpoint}")
                     polygon.append(qpoint)
 
             self.setPolygon(polygon)
