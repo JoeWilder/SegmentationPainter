@@ -1,12 +1,10 @@
-from PyQt6.QtWidgets import QWidget, QGraphicsView, QGraphicsScene, QVBoxLayout, QGraphicsPolygonItem, QApplication, QMainWindow
-from PyQt6.QtGui import QPixmap, QImage, QColor, QPainter, QColor, QImageReader, QKeyEvent, QCursor, QMouseEvent, QWheelEvent, QPolygonF
-from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QEvent, QObject, QBuffer, pyqtBoundSignal, QSize, QPointF
+from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPolygonItem, QApplication
+from PyQt6.QtGui import QPixmap, QImage, QColor, QPainter, QColor, QImageReader, QKeyEvent, QCursor, QMouseEvent, QWheelEvent
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPoint, QEvent, QObject, QBuffer, pyqtBoundSignal
 
 from components.display_bar.display_bar import DisplayBar
 
 import qimage2ndarray
-from typing import List, Tuple
-import pickle
 from PIL import Image, ImageDraw, ExifTags
 import io
 import json
@@ -14,9 +12,7 @@ from datetime import datetime
 from shapely.geometry import Polygon as ShapelyPolygon
 import geopandas as gpd
 import rasterio
-import numpy as np
 import os
-import pandas as pd
 
 from utils.async_worker import AsyncWorker
 from utils.tool_mode import ToolMode
@@ -146,7 +142,6 @@ class ImageCanvas(QGraphicsView):
                             item.set_selected(True)
 
                             self.main_page.display_bar.get_toolbox().move_selected_list_item(item)
-                            # self.display_bar.getRightDrawer().moveToMask(item)
                             return
 
                 # If right-clicking without holding control, do nothing
@@ -432,7 +427,7 @@ class ImageCanvas(QGraphicsView):
             with rasterio.open(self.image_path) as src:
                 transform, crs = src.transform, src.crs
 
-        rows = []  # List to store rows for GeoDataFrame
+        rows = []
 
         for item in self.scene.items():
             if isinstance(item, QGraphicsPolygonItem):
@@ -448,23 +443,21 @@ class ImageCanvas(QGraphicsView):
                 if len(points) < 3:
                     continue
 
-                print(item.manager.clicked_points)
-
-                # If using a raster file, apply transformation; otherwise, flip Y
+                # If using a tiff file, apply transformation; otherwise, flip Y
                 transformed_points = [transform * (x, y) for x, y in points] if transform else [(x, -y) for x, y in points]
 
-                # Convert to Shapely Polygon
                 poly = ShapelyPolygon(transformed_points)
+                seed_point = QPoint(round(item.unique_point[0]), round(item.unique_point[1]))
+                seed_point = self.mapToScene(seed_point)
 
-                # Append row with geometry and attributes
                 rows.append(
                     {
                         "polygon_id": polygon_id,
                         "group_id": group_id,
                         "label": label,
                         "geometry": poly,
-                        "seed_pnt_x": item.unique_point[0],
-                        "seed_pnt_y": item.unique_point[1],
+                        "seed_pnt_x": seed_point.x(),
+                        "seed_pnt_y": seed_point.y(),
                         "red": r,
                         "green": g,
                         "blue": b,
@@ -472,18 +465,14 @@ class ImageCanvas(QGraphicsView):
                     }
                 )
 
-        # Create GeoDataFrame
         gdf = gpd.GeoDataFrame(rows, columns=["polygon_id", "group_id", "label", "geometry", "seed_pnt_x", "seed_pnt_y", "red", "green", "blue", "alpha"], crs=crs if crs else None)
-
-        # Save to shapefile
+        # WARNING THROWN HERE DUE TO NO CRS, IT'S FINE THOUGH?
         gdf.to_file(file_path)
 
     def import_shapefile(self, file_path: str):
         try:
-            # Load the shapefile
             gdf = gpd.read_file(file_path)
 
-            # Ensure it has the necessary columns
             required_columns = {"polygon_id", "group_id", "label", "geometry", "seed_pnt_x", "seed_pnt_y", "red", "green", "blue", "alpha"}
             if not required_columns.issubset(gdf.columns):
                 raise ValueError(f"Shapefile is missing required columns: {required_columns - set(gdf.columns)}")
@@ -491,11 +480,8 @@ class ImageCanvas(QGraphicsView):
             transform = None
             if os.path.splitext(self.image_path)[-1] in [".tif", ".tiff"]:
                 with rasterio.open(self.image_path) as src:
-                    transform = ~src.transform  # Invert transform to map back to image coordinates
+                    transform = ~src.transform
 
-            i = 1
-
-            # Iterate over polygons and add them to the scene
             for _, row in reversed(list(gdf.iterrows())):
                 polygon_id = row["polygon_id"]
                 group_id = row["group_id"]
@@ -516,6 +502,7 @@ class ImageCanvas(QGraphicsView):
                 first_point = [unique_point_x, unique_point_y, 1]
                 polygon_color = QColor(r, g, b, a)
                 mask_polygon = Polygon(polygon_color, manager, first_point)
+                manager.clicked_points.append([[unique_point_x, unique_point_y], 1])
                 mask_polygon.set_name(manager.getName())
                 mask_polygon.set_display_name(label)
                 mask_polygon.id = polygon_id

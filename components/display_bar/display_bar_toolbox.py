@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QScrollArea, QListWidget, QListWidgetItem, QSlider, QLineEdit, QSizePolicy , QHBoxLayout, QComboBox  # fmt: skip
+from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QScrollArea, QListWidget, QListWidgetItem, QSlider, QSizePolicy, QComboBox  # fmt: skip
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QPainter, QBrush, QTransform
 from utils.polygon import Polygon
@@ -122,7 +122,6 @@ class DisplayBarToolbox(QWidget):
         text_layout.addWidget(self.annotation_dropdown)
 
         self.labels_edit_button = QPushButton("Edit Labels")
-        # self.labels_edit_button.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.labels_edit_button.setMaximumWidth(300)
         self.labels_edit_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.labels_edit_button.setObjectName("LabelsEditLabel")
@@ -192,7 +191,7 @@ class DisplayBarToolbox(QWidget):
                 font-size: 16px;
                 font-weight: bold;
             }
-        """
+            """
         )
         self.model_strength_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.model_strength_label)
@@ -201,9 +200,9 @@ class DisplayBarToolbox(QWidget):
         self.strength_slider.setMinimum(0)
         self.strength_slider.setMaximum(3)
         self.strength_slider.setTickInterval(1)
-        self.strength_slider.setSingleStep(1)  # Ensure step-by-step movement
-        self.strength_slider.setPageStep(1)  # Snap when clicking on the track
-        self.strength_slider.setTracking(False)  # Only change on release
+        self.strength_slider.setSingleStep(1)
+        self.strength_slider.setPageStep(1)
+        self.strength_slider.setTracking(False)
 
         self.strength_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.strength_slider.valueChanged.connect(self._strength_slider_changed_listener)
@@ -277,7 +276,7 @@ class DisplayBarToolbox(QWidget):
         new_group = self.group_dropdown.currentText().strip()
 
         if new_group and new_group != "None" and new_group not in [self.group_dropdown.itemText(i) for i in range(self.group_dropdown.count())]:
-            self.group_dropdown.addItem(new_group)  # Add to dropdown
+            self.group_dropdown.addItem(new_group)
             self.group_dropdown.setCurrentText(new_group)
             self.current_group_id_label.setText(new_group)
 
@@ -293,6 +292,7 @@ class DisplayBarToolbox(QWidget):
 
         self.draw_polygon_image(mask)
         mask.set_selected(True)
+        self.current_group_id_label.setText(f"Current Group ID: {mask.group_id}")
 
         self.image_canvas.current_mask_manager = mask.get_mask_manager()
         self.selected_polygon = mask
