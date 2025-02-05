@@ -163,3 +163,5 @@ cython_debug/
 
 /sam_checkpoints/*
 functionality.txt
+test.py
+testing.ipynb

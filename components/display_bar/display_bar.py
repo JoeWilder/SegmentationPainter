@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout  # fmt: skip
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from PyQt6.QtCore import Qt
 
 from components.display_bar.display_bar_toolbox import DisplayBarToolbox

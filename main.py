@@ -1,10 +1,11 @@
 import sys
 import ctypes
+import warnings
+
 from PyQt6.QtWidgets import QApplication
 
 from main_page import MainPage
 
-import warnings
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 

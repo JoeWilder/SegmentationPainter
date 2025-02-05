@@ -77,7 +77,7 @@ class MainPage(QMainWindow):
         menu_bar.import_shapefile_event.connect(self.import_shapefile)
         menu_bar.undo_clicked_event.connect(self._undo_clicked_listener)
         menu_bar.redo_clicked_event.connect(self._redo_clicked_listener)
-        menu_bar.color_masks_by_type_event.connect(self._change_polygon_colors_listener)
+        # menu_bar.color_masks_by_type_event.connect(self._change_polygon_colors_listener) disabled for now due to crash/bad gui
         menu_bar.toggle_display_bar_event.connect(self._toggle_display_bar_listener)
         return menu_bar
 

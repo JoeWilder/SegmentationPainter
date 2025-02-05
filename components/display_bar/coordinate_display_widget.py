@@ -1,8 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton, QScrollArea, QListWidget, QListWidgetItem, QSlider, QLineEdit, QSizePolicy , QHBoxLayout, QComboBox  # fmt: skip
-from PyQt6.QtCore import Qt, pyqtSignal, QPoint
-from PyQt6.QtGui import QPixmap, QPainter, QBrush, QTransform
-from utils.polygon import Polygon
-from utils.slider_strength import SliderStrength
+from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PyQt6.QtCore import Qt, QPoint
 
 
 class CoordinateDisplayWidget(QWidget):
